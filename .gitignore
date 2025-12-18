@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# pygbag build output
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug
+.cursor/debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
