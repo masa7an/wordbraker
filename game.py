@@ -761,6 +761,9 @@ class Game:
                     self.profiling_enabled = False
                     self.profiling_completed = True
                     self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
+                    # ブラウザコンソールに結果を出力
+                    print("[PROFILING] 計測完了: {}フレーム（目標: {}フレーム）".format(
+                        self.profiling_current_frame, self.profiling_target_frames))
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
