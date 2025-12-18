@@ -105,15 +105,12 @@ class Game:
         # ハードモードフラグ
         self.hard_mode = False
         
-        # フレーム時間計測（デバッグ用）
-        self.profiling_enabled = False  # Trueにすると計測開始
-        self.profiling_start_time = None
-        self.profiling_duration = 8.0  # 計測時間（秒）
-        self.frame_times = []  # フレーム時間（秒）のリスト
-        self.profiling_frame_count = 0  # フレームカウンタ（間引き用）
-        self.profiling_sample_interval = 10  # 10フレームに1回だけ記録（軽量化）
-        self.last_p_key_time = 0  # 最後にPキーが押された時刻（デバウンス用）
-        self.p_key_debounce_interval = 0.3  # デバウンス間隔（秒）
+        # フレーム時間計測（デバッグ用） - フレームカウンタベース（Web環境対応）
+        self.profiling_enabled = False  # Trueで計測開始
+        self.profiling_target_frames = 480  # 計測するフレーム数（8秒×60FPS）
+        self.profiling_current_frame = 0  # 現在のフレームカウント
+        self.profiling_completed = False  # 計測完了フラグ（画面表示用）
+        self.profiling_result_text = ""  # 計測結果テキスト
         
         # ゲームパッド初期化（Web環境でもエラーが出ないようにtry-exceptで囲む）
         self.joystick = None
@@ -424,18 +421,9 @@ class Game:
             # Web環境でのキーコード問題を診断するため、unicode属性も確認
             key_unicode = event.unicode if hasattr(event, 'unicode') else None
             
-            # #region agent log (仮説A,C: すべてのキーイベントをログ出力)
-            print("[DEBUG-A] KEYDOWN検出: key_code={}, unicode='{}', pygame.K_p={}, pygame.K_h={}".format(
-                event.key, key_unicode, pygame.K_p, pygame.K_h))
+            # #region agent log (デバッグ用: すべてのキーイベントをログ出力)
+            print("[DEBUG] KEYDOWN: key_code={}, unicode='{}'".format(event.key, key_unicode))
             # #endregion
-            
-            # デバッグ用：PキーとHキーのイベントを詳細にログ出力
-            if event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
-                print("[DEBUG-C] Pキー検出: key_code={}, pygame.K_p={}, unicode={}, state={}".format(
-                    event.key, pygame.K_p, key_unicode, self.state))
-            elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
-                print("[DEBUG] Hキー検出: key_code={}, pygame.K_h={}, unicode={}, state={}".format(
-                    event.key, pygame.K_h, key_unicode, self.state))
             
             if event.key == pygame.K_ESCAPE:
                 if self.state == GameState.RESULT:
@@ -444,8 +432,7 @@ class Game:
                 return False
             elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
                 # Hキーでハードモードをトグル（いつでも切り替え可能）
-                print("[DEBUG] Hキーが押されました (key_code={}, unicode={})".format(
-                    event.key, key_unicode))
+                print("[DEBUG] Hキーが押されました")
                 if self.state == GameState.RESULT:
                     # リザルト画面でHキーを押した場合、ハードモードで再挑戦
                     self.hard_mode = True
@@ -456,62 +443,28 @@ class Game:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
                     print("[DEBUG] ハードモード: {}".format(self.hard_mode))
-            elif event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
-                # Pキーでフレーム時間計測を開始（自動で一定時間後に終了）
-                # 注意: Web環境では大文字/小文字の区別が異なる可能性があるため、unicode属性も確認
-                
-                # #region agent log (仮説B: time.time()の呼び出し前後)
-                print("[DEBUG-B] time.time()呼び出し前")
-                # #endregion
-                
-                current_time = time.time()
-                
-                # #region agent log (仮説B,D: time.time()の結果とデバウンス計算)
-                print("[DEBUG-B] time.time()={}, last_p_key_time={}".format(current_time, self.last_p_key_time))
-                # #endregion
-                
-                time_since_last_press = current_time - self.last_p_key_time
-                
-                # #region agent log (仮説D: デバウンス判定)
-                print("[DEBUG-D] time_since_last_press={:.3f}, debounce_interval={}".format(
-                    time_since_last_press, self.p_key_debounce_interval))
-                # #endregion
-                
-                print("[DEBUG] Pキーが押されました (key_code={}, unicode={}, 前回から{:.3f}秒後, profiling_enabled={})".format(
-                    event.key, key_unicode, time_since_last_press, self.profiling_enabled))
-                
-                # デバウンス: 短時間内の連続押しを無視
-                if time_since_last_press < self.p_key_debounce_interval:
-                    # #region agent log (仮説D: デバウンスで無視)
-                    print("[DEBUG-D] デバウンスで無視: time_since_last_press={:.3f} < debounce_interval={}".format(
-                        time_since_last_press, self.p_key_debounce_interval))
-                    # #endregion
-                    self.last_p_key_time = current_time
+            elif event.key == pygame.K_t or (key_unicode and key_unicode.lower() == 't'):
+                # Tキー（Timer）でフレーム時間計測を開始（フレームカウンタベース）
+                print("[DEBUG] Tキーが押されました")
+                # 計測中または完了済みの場合は無視
+                if self.profiling_enabled or self.profiling_completed:
+                    print("[DEBUG] 計測中または完了済みのため無視")
                     return True
-                
-                # 計測中の場合、新しい計測は開始しない（既存の計測を継続）
-                if self.profiling_enabled:
-                    # #region agent log (仮説E: 計測中で無視)
-                    print("[DEBUG-E] 計測中で無視: profiling_enabled={}".format(self.profiling_enabled))
-                    # #endregion
-                    self.last_p_key_time = current_time
-                    return True
-                
-                # #region agent log (仮説全般: 計測開始)
-                print("[DEBUG] 計測開始処理に到達")
-                # #endregion
-                
-                # 計測を開始（自動で一定時間後に終了）
-                self.last_p_key_time = current_time
+                # 計測を開始
                 self.profiling_enabled = True
-                self.profiling_start_time = None
-                self.frame_times = []
-                self.profiling_frame_count = 0
-                print("[PROFILING] フレーム時間計測を開始します（{}秒間、{}フレームに1回サンプリング、自動終了）".format(
-                    self.profiling_duration, self.profiling_sample_interval))
+                self.profiling_current_frame = 0
+                self.profiling_completed = False
+                print("[PROFILING] フレーム計測を開始（{}フレーム）".format(self.profiling_target_frames))
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
+                # 計測完了時はクリックでリセット
+                if self.profiling_completed:
+                    self.profiling_completed = False
+                    self.profiling_current_frame = 0
+                    self.profiling_result_text = ""
+                    print("[PROFILING] 計測状態をリセットしました")
+                    return True
                 self._handle_action()
         
         # ゲームパッドのボタンイベント
@@ -637,6 +590,36 @@ class Game:
         timer_rect.topright = (SCREEN_WIDTH - 20, 20)
         self.screen.blit(timer_text, timer_rect)
         
+        # 計測完了時の表示（画面中央に大きく表示）
+        if self.profiling_completed:
+            # 背景を半透明にして完了メッセージを表示
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            self.screen.blit(overlay, (0, 0))
+            
+            complete_text = self.font_title.render("計測完了", True, (255, 255, 0))
+            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
+            self.screen.blit(complete_text, complete_rect)
+            
+            frame_text = self.font_normal.render(self.profiling_result_text, True, COLOR_TEXT)
+            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
+            self.screen.blit(frame_text, frame_rect)
+            
+            hint_text = self.font_score.render("クリックでリセット", True, COLOR_TEXT_DIM)
+            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
+            self.screen.blit(hint_text, hint_rect)
+            return  # 計測完了時は他の描画をスキップ
+        
+        # 計測中の表示（右下に小さく）
+        if self.profiling_enabled:
+            progress_text = self.font_score.render(
+                "計測中: {}/{}".format(self.profiling_current_frame, self.profiling_target_frames),
+                True, (255, 255, 0)
+            )
+            progress_rect = progress_text.get_rect()
+            progress_rect.bottomright = (SCREEN_WIDTH - 20, SCREEN_HEIGHT - 20)
+            self.screen.blit(progress_text, progress_rect)
+        
         # エンティティ描画
         door_unlocked = self.door.is_unlocked()
         correct_text = self.current_question['ja'] if self.current_question else None
@@ -722,37 +705,17 @@ class Game:
         # Web環境ではclock.tick()が効かないため、asyncio.sleepで明示的にFPS制御
         frame_interval = 1.0 / self.FPS
         
-        # フレーム時間計測用（軽量化のため間引き記録）
-        frame_start_time = None
-        
         while running:
-            # フレーム開始時刻を記録（計測用、軽量化のため間引き）
-            if self.profiling_enabled:
-                if self.profiling_start_time is None:
-                    # 計測開始
-                    self.profiling_start_time = time.time()
-                    frame_start_time = time.time()
-                    self.profiling_frame_count = 0
-                else:
-                    self.profiling_frame_count += 1
-                    
-                    # 10フレームに1回だけ記録（軽量化）
-                    if self.profiling_frame_count % self.profiling_sample_interval == 0:
-                        current_time = time.time()
-                        if frame_start_time is not None:
-                            # 10フレーム分の経過時間を記録
-                            frame_time = (current_time - frame_start_time) / self.profiling_sample_interval
-                            self.frame_times.append(frame_time)
-                        frame_start_time = current_time
-                        
-                        # 計測時間が経過したら結果を出力
-                        elapsed = current_time - self.profiling_start_time
-                        if elapsed >= self.profiling_duration:
-                            self._print_profiling_results()
-                            self.profiling_enabled = False
-                            self.profiling_start_time = None
-                            self.frame_times = []
-                            frame_start_time = None
+            # フレーム時間計測（フレームカウンタベース、Web環境対応）
+            if self.profiling_enabled and not self.profiling_completed:
+                self.profiling_current_frame += 1
+                
+                # 目標フレーム数に達したら計測完了
+                if self.profiling_current_frame >= self.profiling_target_frames:
+                    self.profiling_enabled = False
+                    self.profiling_completed = True
+                    self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
+                    print("[PROFILING] {}".format(self.profiling_result_text))
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
@@ -777,53 +740,4 @@ class Game:
         
         pygame.quit()
     
-    def _print_profiling_results(self):
-        """フレーム時間計測結果を出力（軽量化版）"""
-        if not self.frame_times:
-            print("[PROFILING] 計測データがありません")
-            return
-        
-        # 統計情報を計算（statisticsモジュールを使わず手動計算で軽量化）
-        total_samples = len(self.frame_times)
-        if total_samples == 0:
-            print("[PROFILING] 計測データがありません")
-            return
-        
-        # 平均値（手動計算）
-        avg_frame_time = sum(self.frame_times) / total_samples
-        min_frame_time = min(self.frame_times)
-        max_frame_time = max(self.frame_times)
-        
-        # 中央値（手動計算、軽量化のため簡易版）
-        sorted_times = sorted(self.frame_times)
-        median_index = total_samples // 2
-        median_frame_time = sorted_times[median_index] if total_samples % 2 == 1 else (sorted_times[median_index - 1] + sorted_times[median_index]) / 2
-        
-        # FPS計算
-        avg_fps = 1.0 / avg_frame_time if avg_frame_time > 0 else 0
-        min_fps = 1.0 / max_frame_time if max_frame_time > 0 else 0
-        max_fps = 1.0 / min_frame_time if min_frame_time > 0 else 0
-        
-        # パーセンタイル計算（軽量化のため簡易版）
-        p95_index = int(total_samples * 0.95)
-        p99_index = int(total_samples * 0.99)
-        p95_frame_time = sorted_times[p95_index] if p95_index < total_samples else sorted_times[-1]
-        p99_frame_time = sorted_times[p99_index] if p99_index < total_samples else sorted_times[-1]
-        
-        # 実際のフレーム数（間引き前）
-        estimated_total_frames = total_samples * self.profiling_sample_interval
-        
-        print("\n" + "=" * 60)
-        print("[PROFILING] フレーム時間計測結果（{}秒間、推定{}フレーム、{}サンプル）".format(
-            self.profiling_duration, estimated_total_frames, total_samples))
-        print("=" * 60)
-        print("フレーム時間（秒）:")
-        print("  平均: {:.4f} ({:.2f} FPS)".format(avg_frame_time, avg_fps))
-        print("  中央値: {:.4f} ({:.2f} FPS)".format(median_frame_time, 1.0 / median_frame_time if median_frame_time > 0 else 0))
-        print("  最小: {:.4f} ({:.2f} FPS)".format(min_frame_time, max_fps))
-        print("  最大: {:.4f} ({:.2f} FPS)".format(max_frame_time, min_fps))
-        print("  95%ile: {:.4f} ({:.2f} FPS)".format(p95_frame_time, 1.0 / p95_frame_time if p95_frame_time > 0 else 0))
-        print("  99%ile: {:.4f} ({:.2f} FPS)".format(p99_frame_time, 1.0 / p99_frame_time if p99_frame_time > 0 else 0))
-        print("=" * 60)
-        print()
 
