@@ -419,19 +419,26 @@ class Game:
             return False
         
         elif event.type == pygame.KEYDOWN:
-            # デバッグ用：キーイベントが来ているか確認（PキーとHキーのみ）
-            if event.key == pygame.K_p or event.key == pygame.K_h:
-                print("[DEBUG] キーイベント検出: key={}, state={}".format(
-                    "P" if event.key == pygame.K_p else "H", self.state))
+            # Web環境でのキーコード問題を診断するため、unicode属性も確認
+            key_unicode = event.unicode if hasattr(event, 'unicode') else None
+            
+            # デバッグ用：PキーとHキーのイベントを詳細にログ出力
+            if event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
+                print("[DEBUG] Pキー検出: key_code={}, pygame.K_p={}, unicode={}, state={}".format(
+                    event.key, pygame.K_p, key_unicode, self.state))
+            elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
+                print("[DEBUG] Hキー検出: key_code={}, pygame.K_h={}, unicode={}, state={}".format(
+                    event.key, pygame.K_h, key_unicode, self.state))
             
             if event.key == pygame.K_ESCAPE:
                 if self.state == GameState.RESULT:
                     # リザルト画面でESCキーで終了
                     return False
                 return False
-            elif event.key == pygame.K_h:
+            elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
                 # Hキーでハードモードをトグル（いつでも切り替え可能）
-                print("[DEBUG] Hキーが押されました")
+                print("[DEBUG] Hキーが押されました (key_code={}, unicode={})".format(
+                    event.key, key_unicode))
                 if self.state == GameState.RESULT:
                     # リザルト画面でHキーを押した場合、ハードモードで再挑戦
                     self.hard_mode = True
@@ -442,9 +449,11 @@ class Game:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
                     print("[DEBUG] ハードモード: {}".format(self.hard_mode))
-            elif event.key == pygame.K_p:
+            elif event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
                 # Pキーでフレーム時間計測を開始/停止（デバッグ用）
-                print("[DEBUG] Pキーが押されました")
+                # 注意: Web環境では大文字/小文字の区別が異なる可能性があるため、unicode属性も確認
+                print("[DEBUG] Pキーが押されました (key_code={}, unicode={})".format(
+                    event.key, key_unicode))
                 if not self.profiling_enabled:
                     self.profiling_enabled = True
                     self.profiling_start_time = None
