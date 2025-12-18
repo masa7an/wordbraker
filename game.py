@@ -781,7 +781,7 @@ class Game:
                 
                 # 479フレーム目で確実にコンソール出力（GPTの助言に従い、js.console.logを使用）
                 if self.profiling_current_frame == 479:
-                    result_msg = f"[PROFILING] 479フレーム到達（目標: {self.profiling_target_frames}フレーム）"
+                    result_msg = f"[PROFILING] Frame 479 reached (target: {self.profiling_target_frames} frames)"
                     if USE_JS_CONSOLE:
                         console.log(result_msg)
                     else:
@@ -793,8 +793,8 @@ class Game:
                     self.profiling_completed = True
                     self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
                     
-                    # ブラウザコンソールに確実に結果を出力（js.console.logを使用、1行にまとめる）
-                    result_msg = f"[PROFILING] 計測完了: frames={self.profiling_current_frame}, target={self.profiling_target_frames}"
+                    # ブラウザコンソールに確実に結果を出力（js.console.logを使用、1行にまとめる、英語）
+                    result_msg = f"[PROFILING] Profiling complete: frames={self.profiling_current_frame}, target={self.profiling_target_frames}"
                     if USE_JS_CONSOLE:
                         console.log(result_msg)
                     else:
