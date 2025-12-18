@@ -674,23 +674,8 @@ class Game:
             
             return  # 計測完了時は他の描画をスキップ
         
-        # 計測中の表示（右下に小さく、キャッシュ化）
-        if self.profiling_enabled:
-            progress_value = (self.profiling_current_frame, self.profiling_target_frames)
-            cache_key = "progress"
-            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != progress_value:
-                progress_surface = self.font_score.render(
-                    "計測中: {}/{}".format(self.profiling_current_frame, self.profiling_target_frames),
-                    True, (255, 255, 0)
-                )
-                self._cached_texts[cache_key] = (progress_surface, progress_value)
-            progress_surface, _ = self._cached_texts[cache_key]
-            progress_rect = progress_surface.get_rect()
-            progress_rect.bottomright = (SCREEN_WIDTH - 20, SCREEN_HEIGHT - 20)
-            self.screen.blit(progress_surface, progress_rect)
-        elif "progress" in self._cached_texts:
-            # 計測が終了したらキャッシュを削除
-            del self._cached_texts["progress"]
+        # 計測中の表示は非表示（パフォーマンス計測の精度向上のため、コンソール出力のみ）
+        # 計測中の画面表示は計測結果に影響するため削除
         
         # エンティティ描画
         door_unlocked = self.door.is_unlocked()
