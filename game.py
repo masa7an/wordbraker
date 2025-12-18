@@ -4,6 +4,15 @@
 import pygame
 import random
 import time
+
+# Web環境用: js.console.log を使用（print()より確実）
+try:
+    from js import console
+    USE_JS_CONSOLE = True
+except ImportError:
+    # ローカル環境では通常のprint()を使用
+    USE_JS_CONSOLE = False
+    console = None
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, GameState,
     BLOCK_COLUMNS, BLOCK_SPACING_X, BLOCK_SPACING_Y,
@@ -114,6 +123,7 @@ class Game:
         self.profiling_current_frame = 0  # 現在のフレームカウント
         self.profiling_completed = False  # 計測完了フラグ（画面表示用）
         self.profiling_result_text = ""  # 計測結果テキスト
+        self.profiling_result_logged = False  # コンソール出力済みフラグ（重複防止）
         
         # ゲームパッド初期化（Web環境でもエラーが出ないようにtry-exceptで囲む）
         self.joystick = None
@@ -618,20 +628,40 @@ class Game:
         timer_rect.topright = (SCREEN_WIDTH - 20, 20)
         self.screen.blit(timer_surface, timer_rect)
         
-        # 計測完了時の表示（計測重視モード：簡略表示、ゲームは停止済み）
+        # 計測完了時の表示（計測重視モード：画面表示で結果を表示、GPTの助言に従う）
         if self.profiling_completed:
-            # 背景を半透明にして完了メッセージを表示（簡略版）
+            # 背景を半透明にして完了メッセージを表示
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 200))
+            overlay.fill((0, 0, 0, 220))
             self.screen.blit(overlay, (0, 0))
             
-            complete_text = self.font_title.render("計測完了 - コンソールを確認", True, (255, 255, 0))
-            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20))
+            # 計測結果を画面に表示（GPTの助言：画面表示が最優先）
+            complete_text = self.font_title.render("計測完了", True, (255, 255, 0))
+            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80))
             self.screen.blit(complete_text, complete_rect)
             
-            frame_text = self.font_normal.render(self.profiling_result_text, True, COLOR_TEXT)
-            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
+            # フレーム数表示
+            frame_text = self.font_normal.render(
+                f"フレーム数: {self.profiling_current_frame}/{self.profiling_target_frames}",
+                True, COLOR_TEXT
+            )
+            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
             self.screen.blit(frame_text, frame_rect)
+            
+            # 推定FPS表示（480フレーム = 8秒想定）
+            estimated_fps = self.profiling_current_frame / 8.0 if self.profiling_current_frame > 0 else 0
+            fps_text = self.font_normal.render(
+                f"推定FPS: {estimated_fps:.1f}",
+                True, COLOR_TEXT
+            )
+            fps_rect = fps_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            self.screen.blit(fps_text, fps_rect)
+            
+            # コンソール確認メッセージ
+            console_text = self.font_score.render("ブラウザコンソール（F12）を確認", True, COLOR_TEXT_DIM)
+            console_rect = console_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40))
+            self.screen.blit(console_text, console_rect)
+            
             return  # 計測完了時は他の描画をスキップ
         
         # 計測中の表示（右下に小さく、キャッシュ化）
@@ -749,10 +779,13 @@ class Game:
             if self.profiling_enabled and not self.profiling_completed:
                 self.profiling_current_frame += 1
                 
-                # デバッグ用：最後の数フレームを出力（計測の進行状況を確認）
-                if self.profiling_current_frame >= self.profiling_target_frames - 5:
-                    print("[PROFILING-DEBUG] フレーム: {}/{}".format(
-                        self.profiling_current_frame, self.profiling_target_frames))
+                # 479フレーム目で確実にコンソール出力（GPTの助言に従い、js.console.logを使用）
+                if self.profiling_current_frame == 479:
+                    result_msg = f"[PROFILING] 479フレーム到達（目標: {self.profiling_target_frames}フレーム）"
+                    if USE_JS_CONSOLE:
+                        console.log(result_msg)
+                    else:
+                        print(result_msg)
                 
                 # 目標フレーム数に達したら計測完了（計測重視モード：確実に出力してゲーム停止）
                 if self.profiling_current_frame >= self.profiling_target_frames:
@@ -760,17 +793,16 @@ class Game:
                     self.profiling_completed = True
                     self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
                     
-                    # ブラウザコンソールに確実に結果を出力（複数回出力して確実性を高める）
-                    result_msg = "[PROFILING] 計測完了: {}フレーム（目標: {}フレーム）".format(
-                        self.profiling_current_frame, self.profiling_target_frames)
-                    print("=" * 60)
-                    print(result_msg)
-                    print("=" * 60)
-                    print(result_msg)  # 念のため2回出力
-                    print("=" * 60)
+                    # ブラウザコンソールに確実に結果を出力（js.console.logを使用、1行にまとめる）
+                    result_msg = f"[PROFILING] 計測完了: frames={self.profiling_current_frame}, target={self.profiling_target_frames}"
+                    if USE_JS_CONSOLE:
+                        console.log(result_msg)
+                    else:
+                        print(result_msg)
+                    
+                    self.profiling_result_logged = True
                     
                     # 計測完了時にゲームを停止（計測重視のため）
-                    # breakを使わず、running = Falseで制御（そのフレームの処理を完了させる）
                     running = False
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
@@ -788,10 +820,6 @@ class Game:
             
             # 画面更新
             pygame.display.flip()
-            
-            # 計測完了時は、画面更新後に再度コンソール出力（確実性を高める）
-            if self.profiling_completed and not self.profiling_enabled:
-                print("[PROFILING] 画面更新後: 計測完了を確認 - {}フレーム".format(self.profiling_current_frame))
             
             # Web環境で必要: 明示的なフレーム間隔で制御を返す
             # await asyncio.sleep(0) は避ける（requestAnimationFrameと同期しない）
