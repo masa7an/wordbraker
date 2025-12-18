@@ -60,15 +60,36 @@ class Ball:
             self.radius
         )
     
-    def launch(self, mouse_x=None, screen_width=1280):
+    def launch(self, mouse_x=None, direction=None, screen_width=1280):
         """
         ボールを発射（クリック時）
         Args:
-            mouse_x: マウスのX座標（Noneの場合は従来通りランダム）
+            mouse_x: マウスのX座標（Noneの場合は使用しない）
+            direction: 発射方向（-1: 左, 0: 中央/ランダム, 1: 右、Noneの場合はマウス位置を使用）
             screen_width: 画面幅（マウス位置の判定用）
         """
         if not self.launched:
-            if mouse_x is not None:
+            # 方向指定が優先（キーボード入力）
+            if direction is not None:
+                if direction == -1:
+                    # 左向きの角度範囲（-45度～-15度）でランダム
+                    angle_degrees = random.uniform(-45, -15)
+                    angle_rad = math.radians(angle_degrees)
+                    speed = math.sqrt(BALL_SPEED_X ** 2 + BALL_SPEED_Y ** 2)
+                    self.vx = speed * math.sin(angle_rad)
+                    self.vy = -speed * math.cos(angle_rad)  # 上向きなので負
+                elif direction == 1:
+                    # 右向きの角度範囲（15度～45度）でランダム
+                    angle_degrees = random.uniform(15, 45)
+                    angle_rad = math.radians(angle_degrees)
+                    speed = math.sqrt(BALL_SPEED_X ** 2 + BALL_SPEED_Y ** 2)
+                    self.vx = speed * math.sin(angle_rad)
+                    self.vy = -speed * math.cos(angle_rad)  # 上向きなので負
+                else:
+                    # direction == 0: 中央/ランダム
+                    self.vx = BALL_SPEED_X * random.choice([-1, 1])
+                    self.vy = -BALL_SPEED_Y
+            elif mouse_x is not None:
                 # マウス位置に応じた発射角度を計算
                 screen_center = screen_width / 2
                 relative_x = mouse_x - screen_center  # 中央からの相対位置
@@ -95,7 +116,7 @@ class Ball:
                     self.vx = speed * math.sin(angle_rad)
                     self.vy = -speed * math.cos(angle_rad)  # 上向きなので負
             else:
-                # マウス位置が指定されていない場合：従来通りランダム
+                # マウス位置も方向指定もない場合：従来通りランダム
                 self.vx = BALL_SPEED_X * random.choice([-1, 1])
                 self.vy = -BALL_SPEED_Y
             

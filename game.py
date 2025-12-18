@@ -129,6 +129,9 @@ class Game:
         # 前フレームのマウス位置（マウス移動検出用）
         self.prev_mouse_x = None
         
+        # ボール発射角度調整用（キーボード左右キー）
+        self.launch_direction = 0  # -1: 左, 0: 中央/ランダム, 1: 右
+        
         # 初期化
         self.init_title()
     
@@ -394,13 +397,25 @@ class Game:
             self.score_manager.reset()
             self.init_stage(1)
         elif self.state == GameState.STAGE_START:
-            # ボール発射（マウス位置に応じた角度で発射）
-            self.ball.launch(mouse_x, SCREEN_WIDTH)
+            # ボール発射（キー入力またはマウス位置に応じた角度で発射）
+            # キー入力が優先（ゲームパッドの代わり）
+            if self.launch_direction != 0:
+                # キー入力がある場合：キー方向を使用
+                self.ball.launch(direction=self.launch_direction, screen_width=SCREEN_WIDTH)
+            else:
+                # キー入力がない場合：マウス位置を使用
+                self.ball.launch(mouse_x=mouse_x, screen_width=SCREEN_WIDTH)
             self.state = GameState.PLAYING
         elif self.state == GameState.PLAYING:
             # プレイ中でも、ボールが未発射の場合は発射可能（リスポーン後など）
             if self.ball and not self.ball.launched:
-                self.ball.launch(mouse_x, SCREEN_WIDTH)
+                # キー入力が優先（ゲームパッドの代わり）
+                if self.launch_direction != 0:
+                    # キー入力がある場合：キー方向を使用
+                    self.ball.launch(direction=self.launch_direction, screen_width=SCREEN_WIDTH)
+                else:
+                    # キー入力がない場合：マウス位置を使用
+                    self.ball.launch(mouse_x=mouse_x, screen_width=SCREEN_WIDTH)
         elif self.state == GameState.GAME_OVER:
             # コンティニュー
             self.score_manager.continue_game()
@@ -441,6 +456,19 @@ class Game:
                 else:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
+            elif event.key == pygame.K_LEFT:
+                # 左キー：ボール発射角度を左向きに設定
+                self.launch_direction = -1
+            elif event.key == pygame.K_RIGHT:
+                # 右キー：ボール発射角度を右向きに設定
+                self.launch_direction = 1
+            elif event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                # 上下キー：ボール発射角度を中央/ランダムに設定
+                self.launch_direction = 0
+        elif event.type == pygame.KEYUP:
+            # キーが離された時、左右キーの場合は方向をリセット
+            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                self.launch_direction = 0
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
