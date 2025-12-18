@@ -117,9 +117,6 @@ class Game:
         # テキスト描画キャッシュ（値が変わった時だけ再レンダリング）
         self._cached_texts = {}  # {key: (surface, value)} の辞書
         
-        # ボール描画のフレームスキップ用カウンタ（2フレームに1回描画）
-        self._ball_draw_frame_counter = 0
-        
         # フレーム時間計測（デバッグ用） - フレームカウンタベース（Web環境対応）
         self.profiling_enabled = False  # Trueで計測開始
         self.profiling_target_frames = 480  # 計測するフレーム数（8秒×60FPS）
@@ -560,10 +557,7 @@ class Game:
         for block in self.blocks:
             block.draw(self.screen, self.font_normal, door_unlocked, correct_text, self.hard_mode)
         self.paddle.draw(self.screen)
-        # ボール描画を2フレームに1回にスキップ（パフォーマンステスト）
-        self._ball_draw_frame_counter += 1
-        if self._ball_draw_frame_counter % 2 == 0:
-            self.ball.draw(self.screen)
+        self.ball.draw(self.screen)
         self.door.draw(self.screen, self.font_normal)
     
     def draw_playing(self):
@@ -703,10 +697,7 @@ class Game:
             # ハードモードがオフになったらキャッシュを削除
             del self._cached_texts["hard_mode"]
         self.paddle.draw(self.screen)
-        # ボール描画を2フレームに1回にスキップ（パフォーマンステスト）
-        self._ball_draw_frame_counter += 1
-        if self._ball_draw_frame_counter % 2 == 0:
-            self.ball.draw(self.screen)
+        self.ball.draw(self.screen)
         self.door.draw(self.screen, self.font_normal)
     
     def draw_stage_clear(self):
