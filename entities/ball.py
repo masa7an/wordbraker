@@ -60,12 +60,45 @@ class Ball:
             self.radius
         )
     
-    def launch(self):
-        """ボールを発射（クリック時）"""
+    def launch(self, mouse_x=None, screen_width=1280):
+        """
+        ボールを発射（クリック時）
+        Args:
+            mouse_x: マウスのX座標（Noneの場合は従来通りランダム）
+            screen_width: 画面幅（マウス位置の判定用）
+        """
         if not self.launched:
-            # x方向の速度をランダム符号で設定
-            self.vx = BALL_SPEED_X * random.choice([-1, 1])
-            self.vy = -BALL_SPEED_Y
+            if mouse_x is not None:
+                # マウス位置に応じた発射角度を計算
+                screen_center = screen_width / 2
+                relative_x = mouse_x - screen_center  # 中央からの相対位置
+                
+                # 中央からの距離で判定（画面幅の20%以内は中央扱い）
+                center_threshold = screen_width * 0.2
+                
+                if abs(relative_x) < center_threshold:
+                    # 中央付近：従来通りランダム（左右どちらか）
+                    self.vx = BALL_SPEED_X * random.choice([-1, 1])
+                    self.vy = -BALL_SPEED_Y
+                elif relative_x < 0:
+                    # 左側：左向きの角度範囲（-45度～-15度）でランダム
+                    angle_degrees = random.uniform(-45, -15)
+                    angle_rad = math.radians(angle_degrees)
+                    speed = math.sqrt(BALL_SPEED_X ** 2 + BALL_SPEED_Y ** 2)
+                    self.vx = speed * math.sin(angle_rad)
+                    self.vy = -speed * math.cos(angle_rad)  # 上向きなので負
+                else:
+                    # 右側：右向きの角度範囲（15度～45度）でランダム
+                    angle_degrees = random.uniform(15, 45)
+                    angle_rad = math.radians(angle_degrees)
+                    speed = math.sqrt(BALL_SPEED_X ** 2 + BALL_SPEED_Y ** 2)
+                    self.vx = speed * math.sin(angle_rad)
+                    self.vy = -speed * math.cos(angle_rad)  # 上向きなので負
+            else:
+                # マウス位置が指定されていない場合：従来通りランダム
+                self.vx = BALL_SPEED_X * random.choice([-1, 1])
+                self.vy = -BALL_SPEED_Y
+            
             self.launched = True
     
     def update(self, dt=1.0):

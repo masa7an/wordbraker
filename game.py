@@ -383,20 +383,24 @@ class Game:
                 # 全ステージクリア
                 self.state = GameState.RESULT
     
-    def _handle_action(self):
-        """アクション処理（クリックやAボタン）"""
+    def _handle_action(self, mouse_x=None):
+        """
+        アクション処理（クリックやAボタン）
+        Args:
+            mouse_x: マウスのX座標（クリック時のみ、ゲームパッドの場合はNone）
+        """
         if self.state == GameState.TITLE:
             # ゲーム開始
             self.score_manager.reset()
             self.init_stage(1)
         elif self.state == GameState.STAGE_START:
-            # ボール発射
-            self.ball.launch()
+            # ボール発射（マウス位置に応じた角度で発射）
+            self.ball.launch(mouse_x, SCREEN_WIDTH)
             self.state = GameState.PLAYING
         elif self.state == GameState.PLAYING:
             # プレイ中でも、ボールが未発射の場合は発射可能（リスポーン後など）
             if self.ball and not self.ball.launched:
-                self.ball.launch()
+                self.ball.launch(mouse_x, SCREEN_WIDTH)
         elif self.state == GameState.GAME_OVER:
             # コンティニュー
             self.score_manager.continue_game()
@@ -440,11 +444,14 @@ class Game:
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
-                self._handle_action()
+                # マウス位置を取得して渡す
+                mouse_x, _ = event.pos
+                self._handle_action(mouse_x)
         
         # ゲームパッドのボタンイベント
         elif event.type == pygame.JOYBUTTONDOWN:
             if event.button == 0:  # Aボタン（通常はボタン0）
+                # ゲームパッドの場合はマウス位置なし（従来通りランダム）
                 self._handle_action()
         
         return True
