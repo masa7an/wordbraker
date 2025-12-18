@@ -1,6 +1,11 @@
 # Word Breaker（英単語ブロック崩し）
 ## Word Breaker (English Vocabulary Block Breaker)
 
+**🎮 デモプレイ / Demo Play**: [公開URL（準備中）](https://example.com)
+**🎮 Demo Play**: [Public URL (Coming Soon)](https://example.com)
+
+---
+
 英単語学習とブロック崩しを組み合わせた教育ゲーム
 A puzzle game that combines English vocabulary learning with block breaking
 
