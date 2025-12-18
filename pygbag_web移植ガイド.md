@@ -23,12 +23,25 @@ pygbag は **ブラウザのイベントループと協調** して動作する�
 ### ✅ 必須事項
 
 ```python
-# FPS制御は明示的に行う
-await asyncio.sleep(1/60)  # 60FPS
+# FPS制御は await asyncio.sleep(0) を使用（VSync同期）
+# 時間指定（sleep(0.016)など）はNG - ブラウザのタイミングとズレる
+await asyncio.sleep(0)  # ループの最後に1回だけ呼ぶ
 
 # dt はフレーム単位で固定（秒単位にしない）
 dt = 1.0  # NOT: dt_ms / 1000.0
 ```
+
+### ⚠️ 重要な注意事項
+
+1. **時間指定はNG**
+   - ❌ `await asyncio.sleep(0.016)` や `await asyncio.sleep(1/60)` のように時間指定してはいけません
+   - ブラウザのタイミングとズレて、カクつきの原因になります
+   - ✅ `await asyncio.sleep(0)` を使用してください（VSync同期）
+
+2. **await asyncio.sleep(0) の呼び出し**
+   - ✅ メインループの**最後に1回だけ**呼ぶ
+   - ❌ ループの途中や、衝突判定の for ループ内などで呼んではいけません
+   - 呼ぶたびに次のフレームまで待たされるため、劇的に遅くなります
 
 ---
 
@@ -76,6 +89,13 @@ if self.remaining_count == 0: ...
 
 マウスとゲームパッド（十字キー/スティック）を併用する場合、  
 **仮想位置パターン** を使用すること。
+
+### ⚠️ ゲームパッドについて
+
+**Web環境ではゲームパッドは非推奨**です。
+- ゲームパッドのトリガー取得がWebでは難しい
+- 代わりにキーボードの左右キー（←→）を使用することを推奨
+- ゲームパッド対応は実装可能だが、Web環境での動作が不安定な場合がある
 
 ```python
 self.virtual_paddle_x = SCREEN_WIDTH // 2
@@ -130,7 +150,7 @@ if current_time - self.last_timer_update > 100:
 
 ### 非同期処理
 - [ ] `pygame.time.wait()` / `time.sleep()` を使用していない
-- [ ] `await asyncio.sleep(1/60)` で明示的にFPS制御している
+- [ ] `await asyncio.sleep(0)` をループの最後に1回だけ呼んでいる（時間指定はNG）
 - [ ] `clock.tick()` に依存していない
 - [ ] 1フレーム内に重い処理がない
 - [ ] `asyncio.create_task()` を毎フレーム呼んでいない
@@ -143,6 +163,7 @@ if current_time - self.last_timer_update > 100:
 
 ### 入力デバイス
 - [ ] マウス/ゲームパッド併用時は仮想位置パターンを使用
+- [ ] ゲームパッドは非推奨（Web環境ではキーボードの左右キーを推奨）
 
 ### 表示
 - [ ] RTA用タイマーは間引き表示している
