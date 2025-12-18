@@ -56,34 +56,12 @@ A block-breaking game where you choose the correct meaning from 3 options and br
 - **発射角度調整 / Adjust Launch Angle**: マウス位置で自動調整（左側で左向き、右側で右向き）
   Automatically adjusted by mouse position (left side = leftward, right side = rightward)
 
-### キーボード操作 / Keyboard Controls
-- **←→キー / Left/Right Keys**: ボール発射角度を調整（左キーで左向き、右キーで右向き）
-  Adjust launch angle (left key = leftward, right key = rightward)
-- **Hキー / H Key**: ハードモード切り替え（いつでも）
-  Toggle hard mode (anytime)
-- **Escキー / Esc Key**: 終了（リザルト画面で）
-  Exit (on result screen)
-
-### ゲームパッド操作 / Gamepad Controls
-- **パドル移動 / Move Paddle**: 十字キー（左右）または左アナログスティック
-  D-pad (left/right) or left analog stick
-- **ボール発射 / Launch Ball**: Aボタン（ステージ開始時、リスポーン後、各種アクション）
-  A button (at stage start, after respawn, various actions)
-
-**注意 / Note**: Web版ではゲームパッドの動作が不安定な場合があります
-Gamepad may not work reliably in the web version
-
 ---
 
 ## ハードモード / Hard Mode
 
-**Hキー**でいつでも切り替え可能
-Press **H key** to toggle anytime
-
 - 正解ブロックも赤色で表示されるため、見分けがつかない
   Correct blocks are also displayed in red, making them indistinguishable
-- リザルト画面でHキーを押すとハードモードで再挑戦
-  Press H key on the result screen to retry in hard mode
 - スコア倍率が適用される
   Score multiplier is applied
 
