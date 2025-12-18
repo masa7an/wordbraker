@@ -110,6 +110,8 @@ class Game:
         self.profiling_start_time = None
         self.profiling_duration = 8.0  # 計測時間（秒）
         self.frame_times = []  # フレーム時間（秒）のリスト
+        self.profiling_frame_count = 0  # フレームカウンタ（間引き用）
+        self.profiling_sample_interval = 10  # 10フレームに1回だけ記録（軽量化）
         
         # ゲームパッド初期化（Web環境でもエラーが出ないようにtry-exceptで囲む）
         self.joystick = None
@@ -439,9 +441,14 @@ class Game:
                     self.profiling_enabled = True
                     self.profiling_start_time = None
                     self.frame_times = []
-                    print("[PROFILING] フレーム時間計測を開始します（{}秒間）".format(self.profiling_duration))
+                    self.profiling_frame_count = 0
+                    print("[PROFILING] フレーム時間計測を開始します（{}秒間、{}フレームに1回サンプリング）".format(
+                        self.profiling_duration, self.profiling_sample_interval))
                 else:
                     self.profiling_enabled = False
+                    self.profiling_start_time = None
+                    self.frame_times = []
+                    self.profiling_frame_count = 0
                     print("[PROFILING] フレーム時間計測を停止しました")
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -656,31 +663,37 @@ class Game:
         # Web環境ではclock.tick()が効かないため、asyncio.sleepで明示的にFPS制御
         frame_interval = 1.0 / self.FPS
         
-        # フレーム時間計測用
+        # フレーム時間計測用（軽量化のため間引き記録）
         frame_start_time = None
         
         while running:
-            # フレーム開始時刻を記録（計測用）
+            # フレーム開始時刻を記録（計測用、軽量化のため間引き）
             if self.profiling_enabled:
-                current_time = time.time()
                 if self.profiling_start_time is None:
-                    self.profiling_start_time = current_time
-                    frame_start_time = current_time
+                    # 計測開始
+                    self.profiling_start_time = time.time()
+                    frame_start_time = time.time()
+                    self.profiling_frame_count = 0
                 else:
-                    # 前フレームの処理時間を記録
-                    if frame_start_time is not None:
-                        frame_time = current_time - frame_start_time
-                        self.frame_times.append(frame_time)
+                    self.profiling_frame_count += 1
                     
-                    # 計測時間が経過したら結果を出力
-                    elapsed = current_time - self.profiling_start_time
-                    if elapsed >= self.profiling_duration:
-                        self._print_profiling_results()
-                        self.profiling_enabled = False
-                        self.profiling_start_time = None
-                        self.frame_times = []
-                    
-                    frame_start_time = current_time
+                    # 10フレームに1回だけ記録（軽量化）
+                    if self.profiling_frame_count % self.profiling_sample_interval == 0:
+                        current_time = time.time()
+                        if frame_start_time is not None:
+                            # 10フレーム分の経過時間を記録
+                            frame_time = (current_time - frame_start_time) / self.profiling_sample_interval
+                            self.frame_times.append(frame_time)
+                        frame_start_time = current_time
+                        
+                        # 計測時間が経過したら結果を出力
+                        elapsed = current_time - self.profiling_start_time
+                        if elapsed >= self.profiling_duration:
+                            self._print_profiling_results()
+                            self.profiling_enabled = False
+                            self.profiling_start_time = None
+                            self.frame_times = []
+                            frame_start_time = None
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
@@ -706,35 +719,44 @@ class Game:
         pygame.quit()
     
     def _print_profiling_results(self):
-        """フレーム時間計測結果を出力"""
+        """フレーム時間計測結果を出力（軽量化版）"""
         if not self.frame_times:
             print("[PROFILING] 計測データがありません")
             return
         
-        import statistics
+        # 統計情報を計算（statisticsモジュールを使わず手動計算で軽量化）
+        total_samples = len(self.frame_times)
+        if total_samples == 0:
+            print("[PROFILING] 計測データがありません")
+            return
         
-        # 統計情報を計算
-        total_frames = len(self.frame_times)
-        avg_frame_time = statistics.mean(self.frame_times)
+        # 平均値（手動計算）
+        avg_frame_time = sum(self.frame_times) / total_samples
         min_frame_time = min(self.frame_times)
         max_frame_time = max(self.frame_times)
-        median_frame_time = statistics.median(self.frame_times)
+        
+        # 中央値（手動計算、軽量化のため簡易版）
+        sorted_times = sorted(self.frame_times)
+        median_index = total_samples // 2
+        median_frame_time = sorted_times[median_index] if total_samples % 2 == 1 else (sorted_times[median_index - 1] + sorted_times[median_index]) / 2
         
         # FPS計算
         avg_fps = 1.0 / avg_frame_time if avg_frame_time > 0 else 0
         min_fps = 1.0 / max_frame_time if max_frame_time > 0 else 0
         max_fps = 1.0 / min_frame_time if min_frame_time > 0 else 0
         
-        # パーセンタイル計算
-        sorted_times = sorted(self.frame_times)
-        p95_index = int(len(sorted_times) * 0.95)
-        p99_index = int(len(sorted_times) * 0.99)
-        p95_frame_time = sorted_times[p95_index] if p95_index < len(sorted_times) else sorted_times[-1]
-        p99_frame_time = sorted_times[p99_index] if p99_index < len(sorted_times) else sorted_times[-1]
+        # パーセンタイル計算（軽量化のため簡易版）
+        p95_index = int(total_samples * 0.95)
+        p99_index = int(total_samples * 0.99)
+        p95_frame_time = sorted_times[p95_index] if p95_index < total_samples else sorted_times[-1]
+        p99_frame_time = sorted_times[p99_index] if p99_index < total_samples else sorted_times[-1]
+        
+        # 実際のフレーム数（間引き前）
+        estimated_total_frames = total_samples * self.profiling_sample_interval
         
         print("\n" + "=" * 60)
-        print("[PROFILING] フレーム時間計測結果（{}秒間、{}フレーム）".format(
-            self.profiling_duration, total_frames))
+        print("[PROFILING] フレーム時間計測結果（{}秒間、推定{}フレーム、{}サンプル）".format(
+            self.profiling_duration, estimated_total_frames, total_samples))
         print("=" * 60)
         print("フレーム時間（秒）:")
         print("  平均: {:.4f} ({:.2f} FPS)".format(avg_frame_time, avg_fps))
