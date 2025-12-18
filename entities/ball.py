@@ -49,6 +49,16 @@ class Ball:
             self.radius * 2,
             self.radius * 2
         )
+        
+        # パフォーマンス用：描画用Surfaceを事前作成（WASM環境でのdraw.circleコスト削減）
+        surface_size = self.radius * 2
+        self._surface = pygame.Surface((surface_size, surface_size), pygame.SRCALPHA)
+        pygame.draw.circle(
+            self._surface,
+            self.color,
+            (self.radius, self.radius),  # Surface内の中心座標
+            self.radius
+        )
     
     def launch(self):
         """ボールを発射（クリック時）"""
@@ -151,11 +161,14 @@ class Ball:
     
     def draw(self, screen):
         """
-        ボールを描画
+        ボールを描画（事前作成したSurfaceをblit）
         Args:
             screen: pygame.Surface
         """
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+        screen.blit(
+            self._surface,
+            (int(self.x - self.radius), int(self.y - self.radius))
+        )
     
     def get_pos(self):
         """
