@@ -105,6 +105,9 @@ class Game:
         # ハードモードフラグ
         self.hard_mode = False
         
+        # テキスト描画キャッシュ（値が変わった時だけ再レンダリング）
+        self._cached_texts = {}  # {key: (surface, value)} の辞書
+        
         # フレーム時間計測（デバッグ用） - フレームカウンタベース（Web環境対応）
         self.profiling_enabled = False  # Trueで計測開始
         self.profiling_target_frames = 480  # 計測するフレーム数（8秒×60FPS）
@@ -163,6 +166,9 @@ class Game:
         self.stage_clear_time = 0
         self.last_timer_update = time.time()  # タイマー表示の間引き用もリセット
         self.displayed_time = 0.0
+        
+        # テキストキャッシュをクリア（ステージが変わったため）
+        self._cached_texts.clear()
     
     def init_entities(self):
         """エンティティを初期化"""
@@ -496,24 +502,37 @@ class Game:
         """ステージ開始画面を描画"""
         # 問題表示
         if self.current_question:
-            # お題（単語）を中央に表示
+            # お題（単語）を中央に表示（キャッシュ化、draw_playing()と同じキーを使用）
             question_text = self.current_question['word']
-            word_text = self.font_title.render(question_text, True, COLOR_TEXT)
-            word_rect = word_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
-            self.screen.blit(word_text, word_rect)
+            cache_key = f"question_{question_text}"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != question_text:
+                word_surface = self.font_title.render(question_text, True, COLOR_TEXT)
+                self._cached_texts[cache_key] = (word_surface, question_text)
+            word_surface, _ = self._cached_texts[cache_key]
+            word_rect = word_surface.get_rect(center=(SCREEN_WIDTH // 2, 100))
+            self.screen.blit(word_surface, word_rect)
             
-            # IDナンバーを表示（グレー、小さい文字、お題の左側）
+            # IDナンバーを表示（グレー、小さい文字、お題の左側、キャッシュ化）
             word_id = self.current_question.get('id', 0)
-            id_text = self.font_id.render(f"ID={word_id}", True, COLOR_TEXT_DIM)
-            # お題の左側に配置（お題の左端から少し左に）
-            id_rect = id_text.get_rect()
+            id_text_str = f"ID={word_id}"
+            cache_key = f"id_{word_id}"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != id_text_str:
+                id_surface = self.font_id.render(id_text_str, True, COLOR_TEXT_DIM)
+                self._cached_texts[cache_key] = (id_surface, id_text_str)
+            id_surface, _ = self._cached_texts[cache_key]
+            id_rect = id_surface.get_rect()
             id_rect.centery = word_rect.centery  # お題と同じ高さ
             id_rect.right = word_rect.left - 20  # お題の左から20px左側
-            self.screen.blit(id_text, id_rect)
+            self.screen.blit(id_surface, id_rect)
             
-            hint_text = self.font_normal.render("クリックでボール発射", True, COLOR_TEXT_DIM)
-            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100))
-            self.screen.blit(hint_text, hint_rect)
+            # ヒントテキスト（キャッシュ化）
+            cache_key = "hint_launch"
+            if cache_key not in self._cached_texts:
+                hint_surface = self.font_normal.render("クリックでボール発射", True, COLOR_TEXT_DIM)
+                self._cached_texts[cache_key] = (hint_surface, "クリックでボール発射")
+            hint_surface, _ = self._cached_texts[cache_key]
+            hint_rect = hint_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100))
+            self.screen.blit(hint_surface, hint_rect)
         
         # ブロックとパドルを表示（プレビュー）
         door_unlocked = self.door.is_unlocked()
@@ -528,42 +547,61 @@ class Game:
         """プレイ中画面を描画"""
         # 問題表示（中央上部、最初の位置のまま）
         if self.current_question:
-            # お題（単語）を中央に表示
+            # お題（単語）を中央に表示（キャッシュ化）
             question_text = self.current_question['word']
-            word_text = self.font_title.render(question_text, True, COLOR_TEXT)
-            word_rect = word_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
-            self.screen.blit(word_text, word_rect)
+            cache_key = f"question_{question_text}"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != question_text:
+                word_surface = self.font_title.render(question_text, True, COLOR_TEXT)
+                self._cached_texts[cache_key] = (word_surface, question_text)
+            word_surface, _ = self._cached_texts[cache_key]
+            word_rect = word_surface.get_rect(center=(SCREEN_WIDTH // 2, 100))
+            self.screen.blit(word_surface, word_rect)
             
-            # IDナンバーを表示（グレー、小さい文字、お題の左側）
+            # IDナンバーを表示（グレー、小さい文字、お題の左側、キャッシュ化）
             word_id = self.current_question.get('id', 0)
-            id_text = self.font_id.render(f"ID={word_id}", True, COLOR_TEXT_DIM)
-            # お題の左側に配置（お題の左端から少し左に）
-            id_rect = id_text.get_rect()
+            id_text_str = f"ID={word_id}"
+            cache_key = f"id_{word_id}"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != id_text_str:
+                id_surface = self.font_id.render(id_text_str, True, COLOR_TEXT_DIM)
+                self._cached_texts[cache_key] = (id_surface, id_text_str)
+            id_surface, _ = self._cached_texts[cache_key]
+            id_rect = id_surface.get_rect()
             id_rect.centery = word_rect.centery  # お題と同じ高さ
             id_rect.right = word_rect.left - 20  # お題の左から20px左側
-            self.screen.blit(id_text, id_rect)
+            self.screen.blit(id_surface, id_rect)
         
-        # スコア表示（左上）
-        score_text = self.font_score.render(
-            f"スコア: {self.score_manager.get_score()}", True, COLOR_TEXT
-        )
-        self.screen.blit(score_text, (20, 60))
+        # スコア表示（左上、キャッシュ化）
+        current_score = self.score_manager.get_score()
+        cache_key = "score"
+        if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != current_score:
+            score_surface = self.font_score.render(f"スコア: {current_score}", True, COLOR_TEXT)
+            self._cached_texts[cache_key] = (score_surface, current_score)
+        score_surface, _ = self._cached_texts[cache_key]
+        self.screen.blit(score_surface, (20, 60))
         
-        # ライフ表示
-        life_text = self.font_score.render(
-            f"ライフ: {self.score_manager.get_lifes()}", True, COLOR_TEXT
-        )
-        self.screen.blit(life_text, (20, 90))
+        # ライフ表示（キャッシュ化）
+        current_lifes = self.score_manager.get_lifes()
+        cache_key = "life"
+        if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != current_lifes:
+            life_surface = self.font_score.render(f"ライフ: {current_lifes}", True, COLOR_TEXT)
+            self._cached_texts[cache_key] = (life_surface, current_lifes)
+        life_surface, _ = self._cached_texts[cache_key]
+        self.screen.blit(life_surface, (20, 90))
         
-        # コンボ表示
-        if self.score_manager.get_combo_count() > 0:
-            combo_text = self.font_score.render(
-                f"コンボ: {self.score_manager.get_combo_count()}",
-                True, COLOR_TEXT
-            )
-            self.screen.blit(combo_text, (20, 120))
+        # コンボ表示（キャッシュ化）
+        combo_count = self.score_manager.get_combo_count()
+        if combo_count > 0:
+            cache_key = "combo"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != combo_count:
+                combo_surface = self.font_score.render(f"コンボ: {combo_count}", True, COLOR_TEXT)
+                self._cached_texts[cache_key] = (combo_surface, combo_count)
+            combo_surface, _ = self._cached_texts[cache_key]
+            self.screen.blit(combo_surface, (20, 120))
+        elif "combo" in self._cached_texts:
+            # コンボが0になったらキャッシュを削除
+            del self._cached_texts["combo"]
         
-        # タイマー表示（右上）- 間引き表示でパフォーマンス改善
+        # タイマー表示（右上）- 間引き表示でパフォーマンス改善（キャッシュ化）
         current_time = time.time()
         elapsed = current_time - self.stage_start_time
         
@@ -572,13 +610,16 @@ class Game:
             self.displayed_time = elapsed
             self.last_timer_update = current_time
         
-        # 表示値を使用（毎フレームレンダリングするが、計算は間引き）
-        timer_text = self.font_score.render(
-            f"時間: {self.displayed_time:.1f}秒", True, COLOR_TEXT
-        )
-        timer_rect = timer_text.get_rect()
+        # タイマーのキャッシュ（表示値が変わった時だけ再レンダリング）
+        timer_value = int(self.displayed_time * 10) / 10  # 0.1秒単位で丸める
+        cache_key = "timer"
+        if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != timer_value:
+            timer_surface = self.font_score.render(f"時間: {timer_value:.1f}秒", True, COLOR_TEXT)
+            self._cached_texts[cache_key] = (timer_surface, timer_value)
+        timer_surface, _ = self._cached_texts[cache_key]
+        timer_rect = timer_surface.get_rect()
         timer_rect.topright = (SCREEN_WIDTH - 20, 20)
-        self.screen.blit(timer_text, timer_rect)
+        self.screen.blit(timer_surface, timer_rect)
         
         # 計測完了時の表示（画面中央に大きく表示）
         if self.profiling_completed:
@@ -600,15 +641,23 @@ class Game:
             self.screen.blit(hint_text, hint_rect)
             return  # 計測完了時は他の描画をスキップ
         
-        # 計測中の表示（右下に小さく）
+        # 計測中の表示（右下に小さく、キャッシュ化）
         if self.profiling_enabled:
-            progress_text = self.font_score.render(
-                "計測中: {}/{}".format(self.profiling_current_frame, self.profiling_target_frames),
-                True, (255, 255, 0)
-            )
-            progress_rect = progress_text.get_rect()
+            progress_value = (self.profiling_current_frame, self.profiling_target_frames)
+            cache_key = "progress"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != progress_value:
+                progress_surface = self.font_score.render(
+                    "計測中: {}/{}".format(self.profiling_current_frame, self.profiling_target_frames),
+                    True, (255, 255, 0)
+                )
+                self._cached_texts[cache_key] = (progress_surface, progress_value)
+            progress_surface, _ = self._cached_texts[cache_key]
+            progress_rect = progress_surface.get_rect()
             progress_rect.bottomright = (SCREEN_WIDTH - 20, SCREEN_HEIGHT - 20)
-            self.screen.blit(progress_text, progress_rect)
+            self.screen.blit(progress_surface, progress_rect)
+        elif "progress" in self._cached_texts:
+            # 計測が終了したらキャッシュを削除
+            del self._cached_texts["progress"]
         
         # エンティティ描画
         door_unlocked = self.door.is_unlocked()
@@ -616,12 +665,19 @@ class Game:
         for block in self.blocks:
             block.draw(self.screen, self.font_normal, door_unlocked, correct_text, self.hard_mode)
         
-        # ハードモード表示（右上）
+        # ハードモード表示（右上、キャッシュ化）
         if self.hard_mode:
-            hard_text = self.font_score.render("HARD MODE", True, COLOR_UI_WARNING)
-            hard_rect = hard_text.get_rect()
+            cache_key = "hard_mode"
+            if cache_key not in self._cached_texts:
+                hard_surface = self.font_score.render("HARD MODE", True, COLOR_UI_WARNING)
+                self._cached_texts[cache_key] = (hard_surface, True)
+            hard_surface, _ = self._cached_texts[cache_key]
+            hard_rect = hard_surface.get_rect()
             hard_rect.topright = (SCREEN_WIDTH - 20, 50)
-            self.screen.blit(hard_text, hard_rect)
+            self.screen.blit(hard_surface, hard_rect)
+        elif "hard_mode" in self._cached_texts:
+            # ハードモードがオフになったらキャッシュを削除
+            del self._cached_texts["hard_mode"]
         self.paddle.draw(self.screen)
         self.ball.draw(self.screen)
         self.door.draw(self.screen, self.font_normal)
