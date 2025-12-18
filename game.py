@@ -452,7 +452,7 @@ class Game:
                     self.hard_mode = not self.hard_mode
                     print("[DEBUG] ハードモード: {}".format(self.hard_mode))
             elif event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
-                # Pキーでフレーム時間計測を開始/停止（デバッグ用）
+                # Pキーでフレーム時間計測を開始（自動で一定時間後に終了）
                 # 注意: Web環境では大文字/小文字の区別が異なる可能性があるため、unicode属性も確認
                 current_time = time.time()
                 time_since_last_press = current_time - self.last_p_key_time
@@ -463,24 +463,23 @@ class Game:
                 # デバウンス: 短時間内の連続押しを無視
                 if time_since_last_press < self.p_key_debounce_interval:
                     print("[DEBUG] デバウンス: 短時間内の連続押しを無視します（前回から{:.3f}秒）".format(time_since_last_press))
-                    self.last_p_key_time = current_time  # 無視した場合も時刻を更新（連続無視を防ぐ）
-                    return True  # イベント処理を続行（何もせずに終了）
+                    self.last_p_key_time = current_time
+                    return True
                 
+                # 計測中の場合、新しい計測は開始しない（既存の計測を継続）
+                if self.profiling_enabled:
+                    print("[DEBUG] 計測中です。新しい計測は開始しません（現在の計測を継続）")
+                    self.last_p_key_time = current_time
+                    return True
+                
+                # 計測を開始（自動で一定時間後に終了）
                 self.last_p_key_time = current_time
-                
-                if not self.profiling_enabled:
-                    self.profiling_enabled = True
-                    self.profiling_start_time = None
-                    self.frame_times = []
-                    self.profiling_frame_count = 0
-                    print("[PROFILING] フレーム時間計測を開始します（{}秒間、{}フレームに1回サンプリング）".format(
-                        self.profiling_duration, self.profiling_sample_interval))
-                else:
-                    self.profiling_enabled = False
-                    self.profiling_start_time = None
-                    self.frame_times = []
-                    self.profiling_frame_count = 0
-                    print("[PROFILING] フレーム時間計測を停止しました")
+                self.profiling_enabled = True
+                self.profiling_start_time = None
+                self.frame_times = []
+                self.profiling_frame_count = 0
+                print("[PROFILING] フレーム時間計測を開始します（{}秒間、{}フレームに1回サンプリング、自動終了）".format(
+                    self.profiling_duration, self.profiling_sample_interval))
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
