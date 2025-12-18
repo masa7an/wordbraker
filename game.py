@@ -625,15 +625,20 @@ class Game:
         self.screen.blit(exit_text, exit_rect)
     
     async def run(self):
-        """メインループ（Web対応のためasync、協調型ループ）"""
+        """
+        メインループ（Web対応のためasync、協調型ループ）
+        
+        pygbag環境での注意点:
+        - await asyncio.sleep(0) は避ける（ブラウザのrequestAnimationFrameと同期しない）
+        - 1フレーム = 1 await の構造を維持
+        - 重い処理はフレーム外で実行（init_stage()など）
+        """
         import asyncio
         running = True
         
-        # フレーム間隔（秒単位）
+        # フレーム間隔（秒単位）- 60FPS = 約0.0167秒
+        # Web環境ではclock.tick()が効かないため、asyncio.sleepで明示的にFPS制御
         frame_interval = 1.0 / self.FPS
-        
-        # フレーム間隔（秒単位）- Web環境ではclock.tick()が効かないため明示的に設定
-        frame_interval = 1.0 / self.FPS  # 60FPS = 約0.0167秒
         
         while running:
             dt = 1.0  # フレーム単位（元の設計に合わせる）
@@ -653,7 +658,8 @@ class Game:
             pygame.display.flip()
             
             # Web環境で必要: 明示的なフレーム間隔で制御を返す
-            # clock.tick()はWeb環境で機能しないため、asyncio.sleepでFPS制御
+            # await asyncio.sleep(0) は避ける（requestAnimationFrameと同期しない）
+            # frame_interval (1/60) を使用してブラウザのフレームレートと同期
             await asyncio.sleep(frame_interval)
         
         pygame.quit()
