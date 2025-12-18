@@ -149,40 +149,39 @@ class Ball:
     
     def reflect_paddle(self, paddle_x, paddle_width, paddle_move_direction=0):
         """
-        パドルに当たった時の反射
+        パドルに当たった時の反射（Arkanoid方式：ヒット位置のみで角度決定）
         Args:
             paddle_x: パドルのX座標
             paddle_width: パドルの幅
             paddle_move_direction: パドルの移動方向（-1: 左, 0: 停止, 1: 右）
+                                   ※ 現在は使用しない（見た目の傾きのみに使用）
         """
         # パドル中央からの距離（-1.0 ～ 1.0）
         paddle_center = paddle_x + paddle_width / 2
         hit_pos = (self.x - paddle_center) / (paddle_width / 2)
         hit_pos = max(-1.0, min(1.0, hit_pos))  # クランプ
         
-        # x方向の速度をパドル位置に応じて調整（係数を0.3倍に減らして予測しやすく）
-        base_vx = hit_pos * self._max_vx * 0.3
+        # ヒット位置による角度変化（Arkanoid方式）
+        # 最大角度を45度に設定（パドルの端で最大45度まで曲げる）
+        max_angle_rad = math.radians(45)
+        # 中央: 90度（真上）、左端: 135度（左上）、右端: 45度（右上）
+        bounce_angle = (math.pi / 2) - (hit_pos * max_angle_rad)
         
-        # パドルの移動方向に応じて角度を追加（主な角度制御）
-        if paddle_move_direction != 0:
-            # 30度の角度を速度に変換（tan(30°) ≈ 0.577）
-            angle_effect = abs(self.vy) * self._angle_tan * paddle_move_direction
-            self.vx = base_vx + angle_effect
-        else:
-            self.vx = base_vx
+        # 現在の速度を取得（速度の大きさを保つ）
+        current_speed = math.sqrt(self.vx ** 2 + self.vy ** 2)
+        if current_speed == 0:
+            # 速度が0の場合は初期速度を使用
+            current_speed = math.sqrt(BALL_SPEED_X ** 2 + BALL_SPEED_Y ** 2)
         
-        # y方向は常に反転（上向き）
-        self.vy = -abs(self.vy)  # 常に上向きにする
+        # 新しい速度ベクトルを設定（角度に応じて）
+        self.vx = current_speed * math.cos(bounce_angle)
+        self.vy = -current_speed * math.sin(bounce_angle)  # 上向きなので負
         
         # パドル反射時に速度を+1増やす（ラケットで打ち返すイメージ）
-        current_speed = math.sqrt(self.vx ** 2 + self.vy ** 2)
         new_speed = current_speed + self._bounce_boost
-        
-        # 速度の方向を保ったまま、速度の大きさを増やす
-        if current_speed > 0:
-            speed_ratio = new_speed / current_speed
-            self.vx *= speed_ratio
-            self.vy *= speed_ratio
+        speed_ratio = new_speed / current_speed
+        self.vx *= speed_ratio
+        self.vy *= speed_ratio
     
     def reset(self, x, y):
         """
