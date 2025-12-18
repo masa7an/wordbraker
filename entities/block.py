@@ -55,6 +55,12 @@ class Block:
         
         # Rectキャッシュ（毎フレーム生成を避ける）
         self._rect = pygame.Rect(int(self.x), int(self.y), self.width, self.height)
+        
+        # 描画用Surfaceキャッシュ（WASM環境でのdraw.rectコスト削減）
+        self._surface = None  # 状態が変わった時だけ再作成
+        self._cached_color = None
+        self._cached_hp = None
+        self._cached_hard_mode = None
     
     def hit(self):
         """
@@ -122,9 +128,33 @@ class Block:
         """
         return self._rect
     
+    def _create_surface(self, draw_color, hard_mode):
+        """
+        ブロックの描画用Surfaceを作成（状態が変わった時だけ呼ばれる）
+        Args:
+            draw_color: 描画色
+            hard_mode: ハードモードかどうか
+        Returns:
+            pygame.Surface: ブロックの描画用Surface
+        """
+        surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        
+        # ブロック本体を描画
+        pygame.draw.rect(surface, draw_color, (0, 0, self.width, self.height))
+        
+        # 枠線を描画（視認性向上）
+        if self.type == BlockType.CORRECT and self.hp == 1:
+            # 強調表示：太い黄色の枠線
+            pygame.draw.rect(surface, (255, 255, 100), (0, 0, self.width, self.height), 4)
+        else:
+            # 通常表示：細い白の枠線
+            pygame.draw.rect(surface, (255, 255, 255), (0, 0, self.width, self.height), 2)
+        
+        return surface
+    
     def draw(self, screen, font=None, door_unlocked=False, correct_text=None, hard_mode=False):
         """
-        ブロックを描画
+        ブロックを描画（Surface blitを使用、WASM環境対応）
         Args:
             screen: pygame.Surface
             font: テキスト表示用フォント（Noneの場合はテキスト非表示）
@@ -135,22 +165,24 @@ class Block:
         if self.destroyed:
             return
         
-        # ブロック本体を描画
-        rect = self.get_rect()
-        # ハードモード時、正解ブロックも赤色で表示
+        # 描画色を決定
         draw_color = self.color
         if hard_mode and self.type == BlockType.CORRECT:
             draw_color = COLOR_BLOCK_INCORRECT  # 不正解ブロックと同じ色
-        pygame.draw.rect(screen, draw_color, rect)
         
-        # 枠線を描画（視認性向上）
-        # 1回ヒット時（HP: 1）は太い枠線で強調表示
-        if self.type == BlockType.CORRECT and self.hp == 1:
-            # 強調表示：太い黄色の枠線
-            pygame.draw.rect(screen, (255, 255, 100), rect, 4)
-        else:
-            # 通常表示：細い白の枠線
-            pygame.draw.rect(screen, (255, 255, 255), rect, 2)
+        # 状態が変わった時だけSurfaceを再作成
+        if (self._surface is None or 
+            self._cached_color != draw_color or 
+            self._cached_hp != self.hp or 
+            self._cached_hard_mode != hard_mode):
+            self._surface = self._create_surface(draw_color, hard_mode)
+            self._cached_color = draw_color
+            self._cached_hp = self.hp
+            self._cached_hard_mode = hard_mode
+        
+        # Surfaceをblit（毎フレームのdraw.rectを避ける）
+        rect = self.get_rect()
+        screen.blit(self._surface, (rect.x, rect.y))
         
         # テキスト表示（フォントが指定されている場合）
         if font:
