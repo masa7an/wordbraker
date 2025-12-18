@@ -424,9 +424,14 @@ class Game:
             # Web環境でのキーコード問題を診断するため、unicode属性も確認
             key_unicode = event.unicode if hasattr(event, 'unicode') else None
             
+            # #region agent log (仮説A,C: すべてのキーイベントをログ出力)
+            print("[DEBUG-A] KEYDOWN検出: key_code={}, unicode='{}', pygame.K_p={}, pygame.K_h={}".format(
+                event.key, key_unicode, pygame.K_p, pygame.K_h))
+            # #endregion
+            
             # デバッグ用：PキーとHキーのイベントを詳細にログ出力
             if event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
-                print("[DEBUG] Pキー検出: key_code={}, pygame.K_p={}, unicode={}, state={}".format(
+                print("[DEBUG-C] Pキー検出: key_code={}, pygame.K_p={}, unicode={}, state={}".format(
                     event.key, pygame.K_p, key_unicode, self.state))
             elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
                 print("[DEBUG] Hキー検出: key_code={}, pygame.K_h={}, unicode={}, state={}".format(
@@ -454,23 +459,47 @@ class Game:
             elif event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
                 # Pキーでフレーム時間計測を開始（自動で一定時間後に終了）
                 # 注意: Web環境では大文字/小文字の区別が異なる可能性があるため、unicode属性も確認
+                
+                # #region agent log (仮説B: time.time()の呼び出し前後)
+                print("[DEBUG-B] time.time()呼び出し前")
+                # #endregion
+                
                 current_time = time.time()
+                
+                # #region agent log (仮説B,D: time.time()の結果とデバウンス計算)
+                print("[DEBUG-B] time.time()={}, last_p_key_time={}".format(current_time, self.last_p_key_time))
+                # #endregion
+                
                 time_since_last_press = current_time - self.last_p_key_time
+                
+                # #region agent log (仮説D: デバウンス判定)
+                print("[DEBUG-D] time_since_last_press={:.3f}, debounce_interval={}".format(
+                    time_since_last_press, self.p_key_debounce_interval))
+                # #endregion
                 
                 print("[DEBUG] Pキーが押されました (key_code={}, unicode={}, 前回から{:.3f}秒後, profiling_enabled={})".format(
                     event.key, key_unicode, time_since_last_press, self.profiling_enabled))
                 
                 # デバウンス: 短時間内の連続押しを無視
                 if time_since_last_press < self.p_key_debounce_interval:
-                    print("[DEBUG] デバウンス: 短時間内の連続押しを無視します（前回から{:.3f}秒）".format(time_since_last_press))
+                    # #region agent log (仮説D: デバウンスで無視)
+                    print("[DEBUG-D] デバウンスで無視: time_since_last_press={:.3f} < debounce_interval={}".format(
+                        time_since_last_press, self.p_key_debounce_interval))
+                    # #endregion
                     self.last_p_key_time = current_time
                     return True
                 
                 # 計測中の場合、新しい計測は開始しない（既存の計測を継続）
                 if self.profiling_enabled:
-                    print("[DEBUG] 計測中です。新しい計測は開始しません（現在の計測を継続）")
+                    # #region agent log (仮説E: 計測中で無視)
+                    print("[DEBUG-E] 計測中で無視: profiling_enabled={}".format(self.profiling_enabled))
+                    # #endregion
                     self.last_p_key_time = current_time
                     return True
+                
+                # #region agent log (仮説全般: 計測開始)
+                print("[DEBUG] 計測開始処理に到達")
+                # #endregion
                 
                 # 計測を開始（自動で一定時間後に終了）
                 self.last_p_key_time = current_time
