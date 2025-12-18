@@ -419,6 +419,11 @@ class Game:
             return False
         
         elif event.type == pygame.KEYDOWN:
+            # デバッグ用：キーイベントが来ているか確認（PキーとHキーのみ）
+            if event.key == pygame.K_p or event.key == pygame.K_h:
+                print("[DEBUG] キーイベント検出: key={}, state={}".format(
+                    "P" if event.key == pygame.K_p else "H", self.state))
+            
             if event.key == pygame.K_ESCAPE:
                 if self.state == GameState.RESULT:
                     # リザルト画面でESCキーで終了
@@ -426,6 +431,7 @@ class Game:
                 return False
             elif event.key == pygame.K_h:
                 # Hキーでハードモードをトグル（いつでも切り替え可能）
+                print("[DEBUG] Hキーが押されました")
                 if self.state == GameState.RESULT:
                     # リザルト画面でHキーを押した場合、ハードモードで再挑戦
                     self.hard_mode = True
@@ -435,8 +441,10 @@ class Game:
                 else:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
+                    print("[DEBUG] ハードモード: {}".format(self.hard_mode))
             elif event.key == pygame.K_p:
                 # Pキーでフレーム時間計測を開始/停止（デバッグ用）
+                print("[DEBUG] Pキーが押されました")
                 if not self.profiling_enabled:
                     self.profiling_enabled = True
                     self.profiling_start_time = None
