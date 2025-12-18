@@ -834,12 +834,21 @@ class Game:
             pygame.display.flip()
             flip_time = (time.perf_counter() - flip_start) * 1000  # ms
             
-            # await asyncio.sleep() の時間計測
+            # フレーム処理の経過時間を計算（sleep前）
+            elapsed_before_sleep = time.perf_counter() - frame_start
+            
+            # await asyncio.sleep() の最適化（GPT5.2の指摘に基づく）
+            # 処理時間を考慮し、残り時間だけ待機（不要な待機時間を削減）
             sleep_start = time.perf_counter()
-            # Web環境で必要: 明示的なフレーム間隔で制御を返す
-            # await asyncio.sleep(0) は避ける（requestAnimationFrameと同期しない）
-            # frame_interval (1/60) を使用してブラウザのフレームレートと同期
-            await asyncio.sleep(frame_interval)
+            remaining_time = frame_interval - elapsed_before_sleep
+            
+            if remaining_time > 0:
+                # 残り時間がある場合のみ待機（最小値0.001秒でブラウザとの同期を維持）
+                await asyncio.sleep(max(0.001, remaining_time))
+            else:
+                # 処理時間がframe_intervalを超えている場合は最小限の待機（ブラウザとの同期維持）
+                await asyncio.sleep(0.001)
+            
             sleep_time = (time.perf_counter() - sleep_start) * 1000  # ms
             
             # フレーム合計時間
