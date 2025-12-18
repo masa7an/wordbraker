@@ -455,11 +455,8 @@ class Game:
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
-                # 計測完了時はクリックでリセット
+                # 計測完了時はゲームが停止しているため、クリック処理は無効
                 if self.profiling_completed:
-                    self.profiling_completed = False
-                    self.profiling_current_frame = 0
-                    self.profiling_result_text = ""
                     return True
                 self._handle_action()
         
@@ -621,24 +618,20 @@ class Game:
         timer_rect.topright = (SCREEN_WIDTH - 20, 20)
         self.screen.blit(timer_surface, timer_rect)
         
-        # 計測完了時の表示（画面中央に大きく表示）
+        # 計測完了時の表示（計測重視モード：簡略表示、ゲームは停止済み）
         if self.profiling_completed:
-            # 背景を半透明にして完了メッセージを表示
+            # 背景を半透明にして完了メッセージを表示（簡略版）
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
+            overlay.fill((0, 0, 0, 200))
             self.screen.blit(overlay, (0, 0))
             
-            complete_text = self.font_title.render("計測完了", True, (255, 255, 0))
-            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
+            complete_text = self.font_title.render("計測完了 - コンソールを確認", True, (255, 255, 0))
+            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20))
             self.screen.blit(complete_text, complete_rect)
             
             frame_text = self.font_normal.render(self.profiling_result_text, True, COLOR_TEXT)
-            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
+            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
             self.screen.blit(frame_text, frame_rect)
-            
-            hint_text = self.font_score.render("クリックでリセット", True, COLOR_TEXT_DIM)
-            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
-            self.screen.blit(hint_text, hint_rect)
             return  # 計測完了時は他の描画をスキップ
         
         # 計測中の表示（右下に小さく、キャッシュ化）
@@ -756,14 +749,24 @@ class Game:
             if self.profiling_enabled and not self.profiling_completed:
                 self.profiling_current_frame += 1
                 
-                # 目標フレーム数に達したら計測完了
+                # 目標フレーム数に達したら計測完了（計測重視モード：確実に出力してゲーム停止）
                 if self.profiling_current_frame >= self.profiling_target_frames:
                     self.profiling_enabled = False
                     self.profiling_completed = True
                     self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
-                    # ブラウザコンソールに結果を出力
-                    print("[PROFILING] 計測完了: {}フレーム（目標: {}フレーム）".format(
-                        self.profiling_current_frame, self.profiling_target_frames))
+                    
+                    # ブラウザコンソールに確実に結果を出力（複数回出力して確実性を高める）
+                    result_msg = "[PROFILING] 計測完了: {}フレーム（目標: {}フレーム）".format(
+                        self.profiling_current_frame, self.profiling_target_frames)
+                    print("=" * 60)
+                    print(result_msg)
+                    print("=" * 60)
+                    print(result_msg)  # 念のため2回出力
+                    print("=" * 60)
+                    
+                    # 計測完了時にゲームを停止（計測重視のため）
+                    running = False
+                    break  # ループを抜ける
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
