@@ -112,6 +112,8 @@ class Game:
         self.frame_times = []  # フレーム時間（秒）のリスト
         self.profiling_frame_count = 0  # フレームカウンタ（間引き用）
         self.profiling_sample_interval = 10  # 10フレームに1回だけ記録（軽量化）
+        self.last_p_key_time = 0  # 最後にPキーが押された時刻（デバウンス用）
+        self.p_key_debounce_interval = 0.3  # デバウンス間隔（秒）
         
         # ゲームパッド初期化（Web環境でもエラーが出ないようにtry-exceptで囲む）
         self.joystick = None
@@ -452,8 +454,20 @@ class Game:
             elif event.key == pygame.K_p or (key_unicode and key_unicode.lower() == 'p'):
                 # Pキーでフレーム時間計測を開始/停止（デバッグ用）
                 # 注意: Web環境では大文字/小文字の区別が異なる可能性があるため、unicode属性も確認
-                print("[DEBUG] Pキーが押されました (key_code={}, unicode={})".format(
-                    event.key, key_unicode))
+                current_time = time.time()
+                time_since_last_press = current_time - self.last_p_key_time
+                
+                print("[DEBUG] Pキーが押されました (key_code={}, unicode={}, 前回から{:.3f}秒後, profiling_enabled={})".format(
+                    event.key, key_unicode, time_since_last_press, self.profiling_enabled))
+                
+                # デバウンス: 短時間内の連続押しを無視
+                if time_since_last_press < self.p_key_debounce_interval:
+                    print("[DEBUG] デバウンス: 短時間内の連続押しを無視します（前回から{:.3f}秒）".format(time_since_last_press))
+                    self.last_p_key_time = current_time  # 無視した場合も時刻を更新（連続無視を防ぐ）
+                    return True  # イベント処理を続行（何もせずに終了）
+                
+                self.last_p_key_time = current_time
+                
                 if not self.profiling_enabled:
                     self.profiling_enabled = True
                     self.profiling_start_time = None
