@@ -31,6 +31,11 @@ class Paddle:
         
         # Rectキャッシュ（毎フレーム生成を避ける）
         self._rect = pygame.Rect(int(self.x), int(self.y), self.width, self.height)
+        
+        # 描画用Surfaceキャッシュ（WASM環境でのdraw.rectコスト削減）
+        self._surface = None  # 通常描画用（角度0の時）
+        self._rotated_surface = None  # 回転描画用（角度が0以外の時）
+        self._cached_angle = None
     
     def update(self, mouse_x):
         """
@@ -72,28 +77,68 @@ class Paddle:
         """
         return self._rect
     
+    def _create_surface(self):
+        """
+        パドルの描画用Surfaceを作成（角度0の時）
+        Returns:
+            pygame.Surface: パドルの描画用Surface
+        """
+        surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(surface, self.color, (0, 0, self.width, self.height))
+        return surface
+    
+    def _create_rotated_surface(self):
+        """
+        パドルの回転描画用Surfaceを作成（角度が0以外の時）
+        Returns:
+            tuple: (rotated_surface, rotated_rect)
+        """
+        # 基本Surfaceを作成（キャッシュがあれば再利用）
+        if self._surface is None:
+            self._surface = self._create_surface()
+        
+        # 回転
+        rotated_surface = pygame.transform.rotate(self._surface, -self.angle)
+        center_x = self.x + self.width / 2
+        center_y = self.y + self.height / 2
+        rotated_rect = rotated_surface.get_rect(center=(center_x, center_y))
+        
+        return (rotated_surface, rotated_rect)
+    
     def draw(self, screen):
         """
-        パドルを描画（移動方向に応じて傾きを表示）
+        パドルを描画（移動方向に応じて傾きを表示、Surface blitを使用）
         Args:
             screen: pygame.Surface
         """
+        # 角度が変わった時だけSurfaceを再作成
         if abs(self.angle) > 0.1:
-            # パドルを回転させて描画
-            center_x = self.x + self.width / 2
-            center_y = self.y + self.height / 2
+            # 回転描画
+            if self._cached_angle != self.angle:
+                # 角度が変わった時、回転Surfaceを再作成
+                self._rotated_surface, self._rotated_rect = self._create_rotated_surface()
+                self._cached_angle = self.angle
+            else:
+                # 角度は同じだが、位置が変わった可能性があるので位置を更新
+                center_x = self.x + self.width / 2
+                center_y = self.y + self.height / 2
+                if self._rotated_surface is not None:
+                    self._rotated_rect = self._rotated_surface.get_rect(center=(center_x, center_y))
             
-            # 回転用のSurfaceを作成
-            paddle_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            pygame.draw.rect(paddle_surface, self.color, (0, 0, self.width, self.height))
-            
-            # 回転
-            rotated_surface = pygame.transform.rotate(paddle_surface, -self.angle)
-            rotated_rect = rotated_surface.get_rect(center=(center_x, center_y))
-            screen.blit(rotated_surface, rotated_rect)
+            if self._rotated_surface is not None:
+                screen.blit(self._rotated_surface, self._rotated_rect)
         else:
-            # 通常描画
-            pygame.draw.rect(screen, self.color, self.get_rect())
+            # 通常描画（角度0の時）
+            if self._cached_angle != 0:
+                # 角度が0に戻った時、通常Surfaceを作成
+                self._surface = self._create_surface()
+                self._cached_angle = 0
+                self._rotated_surface = None
+            
+            if self._surface is None:
+                self._surface = self._create_surface()
+            
+            screen.blit(self._surface, (self._rect.x, self._rect.y))
     
     def get_pos(self):
         """

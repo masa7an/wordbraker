@@ -22,6 +22,10 @@ class Door:
         
         # Rectキャッシュ（毎フレーム生成を避ける）
         self._rect = pygame.Rect(int(self.x), int(self.y), self.width, self.height)
+        
+        # 描画用Surfaceキャッシュ（WASM環境でのdraw.rectコスト削減）
+        self._surface = None  # 状態が変わった時だけ再作成
+        self._cached_locked = None
     
     def unlock(self):
         """扉をアンロック（全正解ブロック破壊時）"""
@@ -52,19 +56,37 @@ class Door:
         """
         return self._rect
     
+    def _create_surface(self):
+        """
+        扉の描画用Surfaceを作成（状態が変わった時だけ呼ばれる）
+        Returns:
+            pygame.Surface: 扉の描画用Surface
+        """
+        surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        
+        # 扉本体を描画
+        pygame.draw.rect(surface, self.color, (0, 0, self.width, self.height))
+        
+        # 枠線を描画
+        border_color = (200, 200, 200) if self.locked else (100, 255, 100)
+        pygame.draw.rect(surface, border_color, (0, 0, self.width, self.height), 3)
+        
+        return surface
+    
     def draw(self, screen, font=None):
         """
-        扉を描画
+        扉を描画（Surface blitを使用、WASM環境対応）
         Args:
             screen: pygame.Surface
             font: テキスト表示用フォント（Noneの場合はテキスト非表示）
         """
-        # 扉本体を描画
-        pygame.draw.rect(screen, self.color, self.get_rect())
+        # 状態が変わった時だけSurfaceを再作成
+        if self._surface is None or self._cached_locked != self.locked:
+            self._surface = self._create_surface()
+            self._cached_locked = self.locked
         
-        # 枠線を描画
-        border_color = (200, 200, 200) if self.locked else (100, 255, 100)
-        pygame.draw.rect(screen, border_color, self.get_rect(), 3)
+        # Surfaceをblit（毎フレームのdraw.rectを避ける）
+        screen.blit(self._surface, (self._rect.x, self._rect.y))
         
         # テキスト表示（フォントが指定されている場合）
         if font:
@@ -81,4 +103,7 @@ class Door:
         """扉をリセット（ステージ開始時）"""
         self.locked = True
         self.color = COLOR_DOOR_LOCKED
+        # Surfaceキャッシュをクリア（状態が変わったので再作成が必要）
+        self._surface = None
+        self._cached_locked = None
 
