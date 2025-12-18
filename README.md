@@ -1,8 +1,8 @@
 # Word Breaker（英単語ブロック崩し）
 ## Word Breaker (English Vocabulary Block Breaker)
 
-**🎮 デモプレイ / Demo Play**: [公開URL（準備中）](https://example.com)
-**🎮 Demo Play**: [Public URL (Coming Soon)](https://example.com)
+**🎮 デモプレイ / Demo Play**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
+**🎮 Demo Play**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
 
 ---
 
