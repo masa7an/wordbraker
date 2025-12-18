@@ -97,6 +97,7 @@ class Game:
         self.current_question = None  # 現在の問題
         self.stage_start_time = 0
         self.stage_clear_time = 0
+        self.game_start_time = 0  # ゲーム開始時刻（全ステージクリア時の総タイム計算用）
         
         # タイマー表示の間引き用（パフォーマンス改善）
         self.last_timer_update = 0  # 最後にタイマーを更新した時刻
@@ -163,6 +164,10 @@ class Game:
         self.stage_clear_time = 0
         self.last_timer_update = time.time()  # タイマー表示の間引き用もリセット
         self.displayed_time = 0.0
+        
+        # 最初のステージ開始時にゲーム開始時刻を記録（全ステージクリア時の総タイム計算用）
+        if stage_num == 1:
+            self.game_start_time = time.time()
         
         # テキストキャッシュをクリア（ステージが変わったため）
         self._cached_texts.clear()
@@ -693,22 +698,38 @@ class Game:
         score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
         self.screen.blit(score_text, score_rect)
         
+        # 総タイム表示（キャッシュ化）
+        if self.game_start_time > 0:
+            total_time = time.time() - self.game_start_time
+            timer_value = int(total_time * 10) / 10  # 0.1秒単位で丸める
+            cache_key = "result_timer"
+            if cache_key not in self._cached_texts or self._cached_texts[cache_key][1] != timer_value:
+                time_surface = self.font_normal.render(
+                    f"クリアタイム: {timer_value:.1f}秒", True, COLOR_TEXT_DIM
+                )
+                self._cached_texts[cache_key] = (time_surface, timer_value)
+            time_surface, _ = self._cached_texts[cache_key]
+            time_rect = time_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10))
+            self.screen.blit(time_surface, time_rect)
+        
         if self.score_manager.is_perfect():
             perfect_text = self.font_normal.render("PERFECT!!", True, COLOR_TEXT)
-            perfect_rect = perfect_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10))
+            perfect_rect = perfect_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
             self.screen.blit(perfect_text, perfect_rect)
         
         # 選択肢表示
+        # PERFECT!!表示の有無で位置を調整
+        y_offset = 90 if self.score_manager.is_perfect() else 50
         hard_text = self.font_normal.render("[H キー] ハードモードで再挑戦", True, COLOR_TEXT)
-        hard_rect = hard_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+        hard_rect = hard_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + y_offset))
         self.screen.blit(hard_text, hard_rect)
         
         restart_text = self.font_normal.render("[クリック] 通常モードで最初から", True, COLOR_TEXT)
-        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 90))
+        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + y_offset + 40))
         self.screen.blit(restart_text, restart_rect)
         
         exit_text = self.font_normal.render("[Esc] 終了", True, COLOR_TEXT_DIM)
-        exit_rect = exit_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 130))
+        exit_rect = exit_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + y_offset + 80))
         self.screen.blit(exit_text, exit_rect)
     
     async def run(self):
