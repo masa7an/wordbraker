@@ -5,14 +5,6 @@ import pygame
 import random
 import time
 
-# Web環境用: js.console.log を使用（print()より確実）
-try:
-    from js import console
-    USE_JS_CONSOLE = True
-except ImportError:
-    # ローカル環境では通常のprint()を使用
-    USE_JS_CONSOLE = False
-    console = None
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, GameState,
     BLOCK_COLUMNS, BLOCK_SPACING_X, BLOCK_SPACING_Y,
@@ -116,24 +108,6 @@ class Game:
         
         # テキスト描画キャッシュ（値が変わった時だけ再レンダリング）
         self._cached_texts = {}  # {key: (surface, value)} の辞書
-        
-        # フレーム時間計測（デバッグ用） - フレームカウンタベース（Web環境対応）
-        self.profiling_enabled = False  # Trueで計測開始
-        self.profiling_target_frames = 480  # 計測するフレーム数（8秒×60FPS）
-        self.profiling_current_frame = 0  # 現在のフレームカウント
-        self.profiling_completed = False  # 計測完了フラグ（画面表示用）
-        self.profiling_result_text = ""  # 計測結果テキスト
-        self.profiling_result_logged = False  # コンソール出力済みフラグ（重複防止）
-        
-        # 詳細フレーム時間計測（GPT5.2の指摘に基づく）
-        self.frame_times = {
-            'event': [],      # イベント処理時間（ms）
-            'update': [],     # 更新処理時間（ms）
-            'draw': [],       # 描画処理時間（ms）
-            'flip': [],       # 画面更新時間（ms）
-            'sleep': [],      # await asyncio.sleep() 時間（ms）
-            'total': []       # 合計時間（ms）
-        }
         
         # ゲームパッド初期化（Web環境でもエラーが出ないようにtry-exceptで囲む）
         self.joystick = None
@@ -463,21 +437,9 @@ class Game:
                 else:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
-            elif event.key == pygame.K_t or (key_unicode and key_unicode.lower() == 't'):
-                # Tキー（Timer）でフレーム時間計測を開始（フレームカウンタベース、Web環境対応）
-                # 計測中または完了済みの場合は無視
-                if self.profiling_enabled or self.profiling_completed:
-                    return True
-                # 計測を開始
-                self.profiling_enabled = True
-                self.profiling_current_frame = 0
-                self.profiling_completed = False
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
-                # 計測完了時はゲームが停止しているため、クリック処理は無効
-                if self.profiling_completed:
-                    return True
                 self._handle_action()
         
         # ゲームパッドのボタンイベント
@@ -638,45 +600,6 @@ class Game:
         timer_rect.topright = (SCREEN_WIDTH - 20, 20)
         self.screen.blit(timer_surface, timer_rect)
         
-        # 計測完了時の表示（計測重視モード：画面表示で結果を表示、GPTの助言に従う）
-        if self.profiling_completed:
-            # 背景を半透明にして完了メッセージを表示
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 220))
-            self.screen.blit(overlay, (0, 0))
-            
-            # 計測結果を画面に表示（GPTの助言：画面表示が最優先）
-            complete_text = self.font_title.render("計測完了", True, (255, 255, 0))
-            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80))
-            self.screen.blit(complete_text, complete_rect)
-            
-            # フレーム数表示
-            frame_text = self.font_normal.render(
-                f"フレーム数: {self.profiling_current_frame}/{self.profiling_target_frames}",
-                True, COLOR_TEXT
-            )
-            frame_rect = frame_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
-            self.screen.blit(frame_text, frame_rect)
-            
-            # 推定FPS表示（480フレーム = 8秒想定）
-            estimated_fps = self.profiling_current_frame / 8.0 if self.profiling_current_frame > 0 else 0
-            fps_text = self.font_normal.render(
-                f"推定FPS: {estimated_fps:.1f}",
-                True, COLOR_TEXT
-            )
-            fps_rect = fps_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            self.screen.blit(fps_text, fps_rect)
-            
-            # コンソール確認メッセージ
-            console_text = self.font_score.render("ブラウザコンソール（F12）を確認", True, COLOR_TEXT_DIM)
-            console_rect = console_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40))
-            self.screen.blit(console_text, console_rect)
-            
-            return  # 計測完了時は他の描画をスキップ
-        
-        # 計測中の表示は非表示（パフォーマンス計測の精度向上のため、コンソール出力のみ）
-        # 計測中の画面表示は計測結果に影響するため削除
-        
         # エンティティ描画
         door_unlocked = self.door.is_unlocked()
         correct_text = self.current_question['ja'] if self.current_question else None
@@ -764,177 +687,30 @@ class Game:
         - 重い処理はフレーム外で実行（init_stage()など）
         """
         import asyncio
-        import time
         running = True
         
         while running:
-            # フレーム開始時刻（詳細計測用）
-            frame_start = time.perf_counter()
-            
-            # フレーム時間計測（フレームカウンタベース、Web環境対応）
-            if self.profiling_enabled and not self.profiling_completed:
-                self.profiling_current_frame += 1
-                
-                # 目標フレーム数に達したら計測完了（計測重視モード：確実に出力してゲーム停止）
-                if self.profiling_current_frame >= self.profiling_target_frames:
-                    # このフレームの計測も含めるため、profiling_enabledは維持
-                    # 統計出力は最後のフレームの計測後に実行
-                    self.profiling_completed = True
-                    self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
-                    
-                    # ブラウザコンソールに確実に結果を出力（js.console.logを使用、1行にまとめる、英語）
-                    result_msg = f"[PROFILING] Profiling complete: frames={self.profiling_current_frame}, target={self.profiling_target_frames}"
-                    if USE_JS_CONSOLE:
-                        console.log(result_msg)
-                    else:
-                        print(result_msg)
-                    
-                    # 計測完了時にゲームを停止（計測重視のため）
-                    running = False
-            
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
-            # イベント処理（時間計測）
-            event_start = time.perf_counter()
+            # イベント処理
             for event in pygame.event.get():
                 if not self.handle_event(event):
                     running = False
-            event_time = (time.perf_counter() - event_start) * 1000  # ms
             
-            # 更新（時間計測）
-            update_start = time.perf_counter()
+            # 更新
             self.update(dt)
-            update_time = (time.perf_counter() - update_start) * 1000  # ms
             
-            # 描画（時間計測）
-            draw_start = time.perf_counter()
+            # 描画
             self.draw()
-            draw_time = (time.perf_counter() - draw_start) * 1000  # ms
             
-            # 画面更新（時間計測）
-            flip_start = time.perf_counter()
+            # 画面更新
             pygame.display.flip()
-            flip_time = (time.perf_counter() - flip_start) * 1000  # ms
             
             # ブラウザへの制御返却（Geminiのアドバイスに基づく）
             # await asyncio.sleep(0) は「即座にブラウザへ制御を戻し、次の描画フレーム（VSync）を待つ」
             # 必ずループの最後で0秒待機（時間指定はNG、ブラウザのタイミングとズレる）
-            sleep_start = time.perf_counter()
             await asyncio.sleep(0)
-            sleep_time = (time.perf_counter() - sleep_start) * 1000  # ms
-            
-            # フレーム合計時間
-            frame_total = (time.perf_counter() - frame_start) * 1000  # ms
-            
-            # プロファイリング中の場合、時間を記録
-            if self.profiling_enabled:
-                self.frame_times['event'].append(event_time)
-                self.frame_times['update'].append(update_time)
-                self.frame_times['draw'].append(draw_time)
-                self.frame_times['flip'].append(flip_time)
-                self.frame_times['sleep'].append(sleep_time)
-                self.frame_times['total'].append(frame_total)
-                
-                # 計測完了時に統計を出力（最後のフレームの計測も含める）
-                if self.profiling_completed and not self.profiling_result_logged:
-                    self._output_frame_time_stats()
-                    self.profiling_result_logged = True
-                    self.profiling_enabled = False  # 統計出力後に無効化
         
         pygame.quit()
-    
-    def _output_frame_time_stats(self):
-        """
-        フレーム時間統計を出力（GPT5.2の指摘に基づく詳細計測）
-        """
-        try:
-            import statistics
-            HAS_STATISTICS = True
-        except ImportError:
-            # Web環境でstatisticsモジュールが使えない場合のフォールバック
-            HAS_STATISTICS = False
-            def mean(values):
-                return sum(values) / len(values) if values else 0
-            def median(values):
-                sorted_values = sorted(values)
-                n = len(sorted_values)
-                if n == 0:
-                    return 0
-                if n % 2 == 0:
-                    return (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
-                return sorted_values[n//2]
-        
-        # js.console.log を使用（Web環境対応）
-        try:
-            import js
-            console = js.console
-            USE_JS = True
-        except ImportError:
-            USE_JS = False
-        
-        if not self.frame_times['total']:
-            return
-        
-        # 統計計算
-        stats = {}
-        for key in ['event', 'update', 'draw', 'flip', 'sleep', 'total']:
-            times = self.frame_times[key]
-            if times:
-                if HAS_STATISTICS:
-                    stats[key] = {
-                        'avg': statistics.mean(times),
-                        'min': min(times),
-                        'max': max(times),
-                        'median': statistics.median(times)
-                    }
-                else:
-                    stats[key] = {
-                        'avg': mean(times),
-                        'min': min(times),
-                        'max': max(times),
-                        'median': median(times)
-                    }
-        
-        # コンソール出力（英語、文字化け回避）
-        output_lines = [
-            "=" * 60,
-            "[FRAME TIME ANALYSIS] Detailed frame time breakdown (ms)",
-            "=" * 60,
-            f"Total frames measured: {len(self.frame_times['total'])}",
-            "",
-            "Breakdown by process:",
-            f"  Event processing:  avg={stats['event']['avg']:.3f}ms, min={stats['event']['min']:.3f}ms, max={stats['event']['max']:.3f}ms, median={stats['event']['median']:.3f}ms",
-            f"  Update logic:      avg={stats['update']['avg']:.3f}ms, min={stats['update']['min']:.3f}ms, max={stats['update']['max']:.3f}ms, median={stats['update']['median']:.3f}ms",
-            f"  Draw rendering:   avg={stats['draw']['avg']:.3f}ms, min={stats['draw']['min']:.3f}ms, max={stats['draw']['max']:.3f}ms, median={stats['draw']['median']:.3f}ms",
-            f"  Display flip:     avg={stats['flip']['avg']:.3f}ms, min={stats['flip']['min']:.3f}ms, max={stats['flip']['max']:.3f}ms, median={stats['flip']['median']:.3f}ms",
-            f"  await sleep:      avg={stats['sleep']['avg']:.3f}ms, min={stats['sleep']['min']:.3f}ms, max={stats['sleep']['max']:.3f}ms, median={stats['sleep']['median']:.3f}ms",
-            f"  Total frame:      avg={stats['total']['avg']:.3f}ms, min={stats['total']['min']:.3f}ms, max={stats['total']['max']:.3f}ms, median={stats['total']['median']:.3f}ms",
-            "",
-            "Analysis:",
-        ]
-        
-        # 各処理の割合を計算
-        total_avg = stats['total']['avg']
-        if total_avg > 0:
-            output_lines.append(f"  Event:  {stats['event']['avg']/total_avg*100:.1f}% of total frame time")
-            output_lines.append(f"  Update: {stats['update']['avg']/total_avg*100:.1f}% of total frame time")
-            output_lines.append(f"  Draw:   {stats['draw']['avg']/total_avg*100:.1f}% of total frame time")
-            output_lines.append(f"  Flip:   {stats['flip']['avg']/total_avg*100:.1f}% of total frame time")
-            output_lines.append(f"  Sleep:  {stats['sleep']['avg']/total_avg*100:.1f}% of total frame time")
-        
-        output_lines.append("=" * 60)
-        
-        # 出力（複数回出力して確実性を高める）
-        for line in output_lines:
-            if USE_JS:
-                console.log(line)
-            else:
-                print(line)
-        
-        # 念のため2回出力（確実性重視）
-        if USE_JS:
-            console.log("=" * 60)
-            console.log("[FRAME TIME ANALYSIS] Output complete (duplicate for reliability)")
-            console.log("=" * 60)
     
 
