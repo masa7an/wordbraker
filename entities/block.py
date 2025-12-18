@@ -61,6 +61,13 @@ class Block:
         self._cached_color = None
         self._cached_hp = None
         self._cached_hard_mode = None
+        
+        # テキスト描画キャッシュ（WASM環境でのfont.renderコスト削減）
+        self._text_surface = None  # テキストSurface
+        self._cached_text = None  # キャッシュされたテキスト
+        self._cached_text_color = None  # キャッシュされたテキスト色
+        self._cached_door_unlocked = None  # キャッシュされた扉状態
+        self._cached_correct_text = None  # キャッシュされた正解テキスト
     
     def hit(self):
         """
@@ -184,7 +191,7 @@ class Block:
         rect = self.get_rect()
         screen.blit(self._surface, (rect.x, rect.y))
         
-        # テキスト表示（フォントが指定されている場合）
+        # テキスト表示（フォントが指定されている場合、キャッシュ化）
         if font:
             # 表示するテキストを決定
             display_text = self.text
@@ -193,23 +200,35 @@ class Block:
                 display_text = correct_text
             
             if display_text:
-                # 1回ヒット時（HP: 1）は太字で強調表示
+                # テキスト色を決定
                 if self.type == BlockType.CORRECT and self.hp == 1:
-                    # 強調表示：太字風に2回描画（オフセット）
-                    text_color = (255, 255, 200)  # 明るい色
-                    text_surface = font.render(display_text, True, text_color)
-                    text_rect = text_surface.get_rect(center=rect.center)
-                    # 太字効果：少しずらして2回描画
-                    screen.blit(text_surface, (text_rect.x - 1, text_rect.y))
-                    screen.blit(text_surface, (text_rect.x + 1, text_rect.y))
-                    screen.blit(text_surface, (text_rect.x, text_rect.y - 1))
-                    screen.blit(text_surface, (text_rect.x, text_rect.y + 1))
-                    screen.blit(text_surface, text_rect)
+                    text_color = (255, 255, 200)  # 明るい色（強調表示）
+                    is_bold = True
                 else:
-                    # 通常表示
-                    text_surface = font.render(display_text, True, (255, 255, 255))
-                    text_rect = text_surface.get_rect(center=rect.center)
-                    screen.blit(text_surface, text_rect)
+                    text_color = (255, 255, 255)  # 通常色
+                    is_bold = False
+                
+                # テキストが変わった時だけ再レンダリング（キャッシュ化）
+                if (self._text_surface is None or 
+                    self._cached_text != display_text or 
+                    self._cached_text_color != text_color or
+                    self._cached_door_unlocked != door_unlocked or
+                    self._cached_correct_text != correct_text):
+                    self._text_surface = font.render(display_text, True, text_color)
+                    self._cached_text = display_text
+                    self._cached_text_color = text_color
+                    self._cached_door_unlocked = door_unlocked
+                    self._cached_correct_text = correct_text
+                
+                # テキストを描画
+                text_rect = self._text_surface.get_rect(center=rect.center)
+                if is_bold:
+                    # 太字効果：少しずらして5回描画（オフセット）
+                    screen.blit(self._text_surface, (text_rect.x - 1, text_rect.y))
+                    screen.blit(self._text_surface, (text_rect.x + 1, text_rect.y))
+                    screen.blit(self._text_surface, (text_rect.x, text_rect.y - 1))
+                    screen.blit(self._text_surface, (text_rect.x, text_rect.y + 1))
+                screen.blit(self._text_surface, text_rect)
     
     def get_pos(self):
         """

@@ -26,6 +26,10 @@ class Door:
         # 描画用Surfaceキャッシュ（WASM環境でのdraw.rectコスト削減）
         self._surface = None  # 状態が変わった時だけ再作成
         self._cached_locked = None
+        
+        # テキスト描画キャッシュ（WASM環境でのfont.renderコスト削減）
+        self._text_surface = None  # テキストSurface
+        self._cached_text = None  # キャッシュされたテキスト
     
     def unlock(self):
         """扉をアンロック（全正解ブロック破壊時）"""
@@ -88,16 +92,22 @@ class Door:
         # Surfaceをblit（毎フレームのdraw.rectを避ける）
         screen.blit(self._surface, (self._rect.x, self._rect.y))
         
-        # テキスト表示（フォントが指定されている場合）
+        # テキスト表示（フォントが指定されている場合、キャッシュ化）
         if font:
+            # 表示するテキストを決定
             if self.locked:
                 text = "LOCKED"
             else:
                 text = "GOAL"
             
-            text_surface = font.render(text, True, (255, 255, 255))
-            text_rect = text_surface.get_rect(center=self.get_rect().center)
-            screen.blit(text_surface, text_rect)
+            # テキストが変わった時だけ再レンダリング（キャッシュ化）
+            if self._text_surface is None or self._cached_text != text:
+                self._text_surface = font.render(text, True, (255, 255, 255))
+                self._cached_text = text
+            
+            # テキストを描画
+            text_rect = self._text_surface.get_rect(center=self.get_rect().center)
+            screen.blit(self._text_surface, text_rect)
     
     def reset(self):
         """扉をリセット（ステージ開始時）"""
@@ -106,4 +116,7 @@ class Door:
         # Surfaceキャッシュをクリア（状態が変わったので再作成が必要）
         self._surface = None
         self._cached_locked = None
+        # テキストキャッシュもクリア
+        self._text_surface = None
+        self._cached_text = None
 
