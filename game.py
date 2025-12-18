@@ -749,6 +749,11 @@ class Game:
             if self.profiling_enabled and not self.profiling_completed:
                 self.profiling_current_frame += 1
                 
+                # デバッグ用：最後の数フレームを出力（計測の進行状況を確認）
+                if self.profiling_current_frame >= self.profiling_target_frames - 5:
+                    print("[PROFILING-DEBUG] フレーム: {}/{}".format(
+                        self.profiling_current_frame, self.profiling_target_frames))
+                
                 # 目標フレーム数に達したら計測完了（計測重視モード：確実に出力してゲーム停止）
                 if self.profiling_current_frame >= self.profiling_target_frames:
                     self.profiling_enabled = False
@@ -765,8 +770,8 @@ class Game:
                     print("=" * 60)
                     
                     # 計測完了時にゲームを停止（計測重視のため）
+                    # breakを使わず、running = Falseで制御（そのフレームの処理を完了させる）
                     running = False
-                    break  # ループを抜ける
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
@@ -783,6 +788,10 @@ class Game:
             
             # 画面更新
             pygame.display.flip()
+            
+            # 計測完了時は、画面更新後に再度コンソール出力（確実性を高める）
+            if self.profiling_completed and not self.profiling_enabled:
+                print("[PROFILING] 画面更新後: 計測完了を確認 - {}フレーム".format(self.profiling_current_frame))
             
             # Web環境で必要: 明示的なフレーム間隔で制御を返す
             # await asyncio.sleep(0) は避ける（requestAnimationFrameと同期しない）
