@@ -757,18 +757,15 @@ class Game:
         """
         メインループ（Web対応のためasync、協調型ループ）
         
-        pygbag環境での注意点:
-        - await asyncio.sleep(0) は避ける（ブラウザのrequestAnimationFrameと同期しない）
-        - 1フレーム = 1 await の構造を維持
+        pygbag環境での注意点（Geminiのアドバイスに基づく）:
+        - await asyncio.sleep(0) をループの最後に1回だけ呼ぶ（VSync同期）
+        - 時間指定（sleep(0.016)など）はNG（ブラウザのタイミングとズレる）
+        - clock.tick() との二重待機を避ける（asyncio.sleep(0)がVSyncを強制するため）
         - 重い処理はフレーム外で実行（init_stage()など）
         """
         import asyncio
         import time
         running = True
-        
-        # フレーム間隔（秒単位）- 60FPS = 約0.0167秒
-        # Web環境ではclock.tick()が効かないため、asyncio.sleepで明示的にFPS制御
-        frame_interval = 1.0 / self.FPS
         
         while running:
             # フレーム開始時刻（詳細計測用）
@@ -819,21 +816,11 @@ class Game:
             pygame.display.flip()
             flip_time = (time.perf_counter() - flip_start) * 1000  # ms
             
-            # フレーム処理の経過時間を計算（sleep前）
-            elapsed_before_sleep = time.perf_counter() - frame_start
-            
-            # await asyncio.sleep() の最適化（GPT5.2の指摘に基づく）
-            # 処理時間を考慮し、残り時間だけ待機（不要な待機時間を削減）
+            # ブラウザへの制御返却（Geminiのアドバイスに基づく）
+            # await asyncio.sleep(0) は「即座にブラウザへ制御を戻し、次の描画フレーム（VSync）を待つ」
+            # 必ずループの最後で0秒待機（時間指定はNG、ブラウザのタイミングとズレる）
             sleep_start = time.perf_counter()
-            remaining_time = frame_interval - elapsed_before_sleep
-            
-            if remaining_time > 0:
-                # 残り時間がある場合のみ待機（最小値0.001秒でブラウザとの同期を維持）
-                await asyncio.sleep(max(0.001, remaining_time))
-            else:
-                # 処理時間がframe_intervalを超えている場合は最小限の待機（ブラウザとの同期維持）
-                await asyncio.sleep(0.001)
-            
+            await asyncio.sleep(0)
             sleep_time = (time.perf_counter() - sleep_start) * 1000  # ms
             
             # フレーム合計時間
