@@ -7,7 +7,8 @@ import math
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BALL_RADIUS,
     BALL_SPEED_X, BALL_SPEED_Y, BALL_MAX_VX,
-    COLOR_BALL
+    COLOR_BALL, WALL_BLOCK_BOUNCE_DAMPING,
+    PADDLE_ANGLE_TAN, PADDLE_BOUNCE_SPEED_BOOST
 )
 
 
@@ -34,6 +35,12 @@ class Ball:
         
         # 色
         self.color = COLOR_BALL
+        
+        # パフォーマンス用：定数キャッシュ（WASM環境での関数内import回避）
+        self._wall_damping = WALL_BLOCK_BOUNCE_DAMPING
+        self._max_vx = BALL_MAX_VX
+        self._angle_tan = PADDLE_ANGLE_TAN
+        self._bounce_boost = PADDLE_BOUNCE_SPEED_BOOST
         
         # Rectキャッシュ（毎フレーム生成を避ける）
         self._rect = pygame.Rect(
@@ -70,13 +77,11 @@ class Ball:
     
     def reflect_x(self):
         """X方向の速度を反転（左右の壁やブロックに当たった時、速度を20%減らす）"""
-        from config import WALL_BLOCK_BOUNCE_DAMPING
-        self.vx = -self.vx * WALL_BLOCK_BOUNCE_DAMPING
+        self.vx = -self.vx * self._wall_damping
     
     def reflect_y(self):
         """Y方向の速度を反転（上下の壁やブロックに当たった時、速度を20%減らす）"""
-        from config import WALL_BLOCK_BOUNCE_DAMPING
-        self.vy = -self.vy * WALL_BLOCK_BOUNCE_DAMPING
+        self.vy = -self.vy * self._wall_damping
     
     def reflect_paddle(self, paddle_x, paddle_width, paddle_move_direction=0):
         """
@@ -86,21 +91,18 @@ class Ball:
             paddle_width: パドルの幅
             paddle_move_direction: パドルの移動方向（-1: 左, 0: 停止, 1: 右）
         """
-        from config import BALL_MAX_VX, PADDLE_ANGLE_TAN, PADDLE_BOUNCE_SPEED_BOOST
-        import math
-        
         # パドル中央からの距離（-1.0 ～ 1.0）
         paddle_center = paddle_x + paddle_width / 2
         hit_pos = (self.x - paddle_center) / (paddle_width / 2)
         hit_pos = max(-1.0, min(1.0, hit_pos))  # クランプ
         
         # x方向の速度をパドル位置に応じて調整（係数を0.3倍に減らして予測しやすく）
-        base_vx = hit_pos * BALL_MAX_VX * 0.3
+        base_vx = hit_pos * self._max_vx * 0.3
         
         # パドルの移動方向に応じて角度を追加（主な角度制御）
         if paddle_move_direction != 0:
             # 30度の角度を速度に変換（tan(30°) ≈ 0.577）
-            angle_effect = abs(self.vy) * PADDLE_ANGLE_TAN * paddle_move_direction
+            angle_effect = abs(self.vy) * self._angle_tan * paddle_move_direction
             self.vx = base_vx + angle_effect
         else:
             self.vx = base_vx
@@ -110,7 +112,7 @@ class Ball:
         
         # パドル反射時に速度を+1増やす（ラケットで打ち返すイメージ）
         current_speed = math.sqrt(self.vx ** 2 + self.vy ** 2)
-        new_speed = current_speed + PADDLE_BOUNCE_SPEED_BOOST
+        new_speed = current_speed + self._bounce_boost
         
         # 速度の方向を保ったまま、速度の大きさを増やす
         if current_speed > 0:
