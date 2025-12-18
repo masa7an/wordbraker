@@ -12,7 +12,9 @@ class SoundManager:
     def __init__(self):
         """音声ファイルを読み込む"""
         self.sounds = {}
-        self.muted = False
+        # パフォーマンステスト用: 音声を無効化（Trueで無効、Falseで有効）
+        # TODO: テスト完了後は False に戻す
+        self.muted = True  # テスト用: 音声を無効化
         
         # 音声ファイルのパス
         sound_files = {
