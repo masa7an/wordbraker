@@ -421,10 +421,6 @@ class Game:
             # Web環境でのキーコード問題を診断するため、unicode属性も確認
             key_unicode = event.unicode if hasattr(event, 'unicode') else None
             
-            # #region agent log (デバッグ用: すべてのキーイベントをログ出力)
-            print("[DEBUG] KEYDOWN: key_code={}, unicode='{}'".format(event.key, key_unicode))
-            # #endregion
-            
             if event.key == pygame.K_ESCAPE:
                 if self.state == GameState.RESULT:
                     # リザルト画面でESCキーで終了
@@ -432,7 +428,6 @@ class Game:
                 return False
             elif event.key == pygame.K_h or (key_unicode and key_unicode.lower() == 'h'):
                 # Hキーでハードモードをトグル（いつでも切り替え可能）
-                print("[DEBUG] Hキーが押されました")
                 if self.state == GameState.RESULT:
                     # リザルト画面でHキーを押した場合、ハードモードで再挑戦
                     self.hard_mode = True
@@ -442,19 +437,15 @@ class Game:
                 else:
                     # 通常のステージ中はトグル
                     self.hard_mode = not self.hard_mode
-                    print("[DEBUG] ハードモード: {}".format(self.hard_mode))
             elif event.key == pygame.K_t or (key_unicode and key_unicode.lower() == 't'):
-                # Tキー（Timer）でフレーム時間計測を開始（フレームカウンタベース）
-                print("[DEBUG] Tキーが押されました")
+                # Tキー（Timer）でフレーム時間計測を開始（フレームカウンタベース、Web環境対応）
                 # 計測中または完了済みの場合は無視
                 if self.profiling_enabled or self.profiling_completed:
-                    print("[DEBUG] 計測中または完了済みのため無視")
                     return True
                 # 計測を開始
                 self.profiling_enabled = True
                 self.profiling_current_frame = 0
                 self.profiling_completed = False
-                print("[PROFILING] フレーム計測を開始（{}フレーム）".format(self.profiling_target_frames))
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 左クリック
@@ -463,7 +454,6 @@ class Game:
                     self.profiling_completed = False
                     self.profiling_current_frame = 0
                     self.profiling_result_text = ""
-                    print("[PROFILING] 計測状態をリセットしました")
                     return True
                 self._handle_action()
         
@@ -715,7 +705,6 @@ class Game:
                     self.profiling_enabled = False
                     self.profiling_completed = True
                     self.profiling_result_text = "計測完了: {}フレーム".format(self.profiling_current_frame)
-                    print("[PROFILING] {}".format(self.profiling_result_text))
             
             dt = 1.0  # フレーム単位（元の設計に合わせる）
             
