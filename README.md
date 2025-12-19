@@ -137,7 +137,3 @@ See `pygbag_web移植ガイド.md` for details
 （未定）  
 To be determined
 
----
-
-開発者向けの詳細情報は `ROADMAP.md` を参照してください。  
-For developer information, see `ROADMAP.md`.
