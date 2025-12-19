@@ -1,5 +1,4 @@
 # Word Breaker（英単語ブロック崩し）
-## Word Breaker (English Vocabulary Block Breaker)
 
 **🎮 デモプレイ / Demo Play**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
 
