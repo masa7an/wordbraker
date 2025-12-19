@@ -1,6 +1,6 @@
 # Word Breaker（英単語ブロック崩し）
 
-**🎮 デモプレイ / Demo Play**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
+**▶ Play Now**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
 
 ---
 
