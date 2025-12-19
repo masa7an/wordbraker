@@ -1,5 +1,4 @@
 # Word Breaker（英単語ブロック崩し）
-## Word Breaker (English Vocabulary Block Breaker)
 
 **🎮 デモプレイ / Demo Play**: [https://masa7an.github.io/wordbraker/](https://masa7an.github.io/wordbraker/)
 
@@ -18,10 +17,13 @@ A block-breaking game where you choose the correct meaning from 3 options and br
 **特徴 / Features:**
 - 正解ブロックだけが破壊可能  
   Only correct blocks can be destroyed
+  
 - 不正解ブロックは壊れない（思考を促す仕組み）  
   Incorrect blocks are indestructible (encourages thinking)
+  
 - 10ステージのチャレンジ  
   10 stages to challenge
+  
 - スコアとクリアタイムで再挑戦を誘導  
   Score and clear time encourage replay
 
@@ -61,9 +63,11 @@ A block-breaking game where you choose the correct meaning from 3 options and br
 - **パドル移動 / Move Paddle**  
   マウスで移動  
   Move with mouse
+  
 - **ボール発射 / Launch Ball**  
   クリック（ステージ開始時、リスポーン後）  
   Click (at stage start, after respawn)
+  
 - **発射角度調整 / Adjust Launch Angle**  
   マウス位置で自動調整（左側で左向き、右側で右向き）  
   Automatically adjusted by mouse position (left side = leftward, right side = rightward)
@@ -74,6 +78,7 @@ A block-breaking game where you choose the correct meaning from 3 options and br
 
 - 正解ブロックも赤色で表示されるため、見分けがつかない  
   Correct blocks are also displayed in red, making them indistinguishable
+  
 - スコア倍率が適用される  
   Score multiplier is applied
 
@@ -84,9 +89,11 @@ A block-breaking game where you choose the correct meaning from 3 options and br
 - **基本スコア / Base Score**  
   正解ブロック破壊で+100  
   +100 for each correct block destroyed
+  
 - **コンボ / Combo**  
   3回連続で破壊すると×1.2倍  
   ×1.2 multiplier for 3 consecutive destructions
+  
 - **ノーミスボーナス / No-Miss Bonus**  
   ミスなしでクリアすると×1.2倍 + "PERFECT!!"表示  
   ×1.2 multiplier + "PERFECT!!" display for clearing without missing
@@ -125,10 +132,7 @@ Play directly in your browser (using pygbag)
 # 仮想環境でpygbagをインストール後
 # After installing pygbag in a virtual environment
 pygbag main.py
-```
 
-詳細は `pygbag_web移植ガイド.md` を参照  
-See `pygbag_web移植ガイド.md` for details
 
 ---
 
