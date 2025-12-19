@@ -5,7 +5,7 @@
 
 ---
 
-英単語学習とブロック崩しを組み合わせた教育ゲーム
+英単語学習とブロック崩しを組み合わせた教育ゲーム\n
 A puzzle game that combines English vocabulary learning with block breaking
 
 ---
