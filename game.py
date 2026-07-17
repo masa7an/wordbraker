@@ -3,7 +3,13 @@
 """
 import pygame
 import random
+import sys
 import time
+
+# 実行環境の判定
+# Web(pygbag/WASM)ではブラウザのVSyncがFPSを決めるため、こちらでの制御は不要かつ有害。
+# ローカル(通常のCPython)にはVSyncが無いので、自前でFPSを制限する必要がある。
+IS_WEB = (sys.platform == "emscripten")
 
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, GameState,
@@ -741,6 +747,11 @@ class Game:
         - 時間指定（sleep(0.016)など）はNG（ブラウザのタイミングとズレる）
         - clock.tick() との二重待機を避ける（asyncio.sleep(0)がVSyncを強制するため）
         - 重い処理はフレーム外で実行（init_stage()など）
+
+        ローカル環境ではVSyncが無く、await asyncio.sleep(0) は即座に返るため、
+        clock.tick() が無いとループが際限なく回りボールが超高速になる（実測77倍速）。
+        dt=1.0固定（フレーム単位）の設計上、ループ回転数がそのままゲーム速度になるので、
+        ローカルでのみ clock.tick() でFPSを固定する。
         """
         import asyncio
         running = True
@@ -766,7 +777,11 @@ class Game:
             # await asyncio.sleep(0) は「即座にブラウザへ制御を戻し、次の描画フレーム（VSync）を待つ」
             # 必ずループの最後で0秒待機（時間指定はNG、ブラウザのタイミングとズレる）
             await asyncio.sleep(0)
-        
+
+            # ローカルのみFPS制限（Webではブラウザが上記でVSync同期するため呼ばない）
+            if not IS_WEB:
+                self.clock.tick(self.FPS)
+
         pygame.quit()
     
 
