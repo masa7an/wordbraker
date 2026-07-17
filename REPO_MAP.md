@@ -14,6 +14,27 @@
 - 公開URL: https://masa7an.github.io/wordbraker/
 - ビルドは `pygbag main.py`（run_web.bat）→ `build/web/` に生成 → `gh-pages` に手動デプロイ
 
+## ビルド環境
+
+| 用途 | 実行環境 | 備考 |
+|---|---|---|
+| ローカルプレイ（`run.bat`） | **グローバルのPython** + pygame | `requirements.txt` = pygame のみ |
+| Web版ビルド（`run_web.bat`） | **`venv/`**（Python 3.12 + pygbag 0.9.2） | pygameは入れない（pygbagがWASM側に用意するため） |
+
+- venvは**Python 3.12**で作る（`py -3.12 -m venv venv`）。pygbagの生成物が `data-python=python3.12` を前提とするため。
+- pygbagは**0.9.2に固定**する。公開中の成果物と同じバージョンで揃えないとビルド結果が変わりうる。
+- `requirements.txt` にpygbagは含まれない（venv側の責務）。
+
+### ⚠️ リポジトリ直下にビルド成果物を置かないこと
+
+pygbagは**アプリのフォルダ配下を丸ごとapkに梱包する**。過去にルート直下へ
+`wordbraker.apk` / `index.html` / `favicon.png` のコピーが置かれていた結果、
+**apkの中にapk自身が入り込んでサイズが倍増**していた（3.5MB → 7.1MB、2026-07-17に削除済み）。
+`.gitignore` は**pygbagの梱包対象には効かない**ので、gitで無視するだけでは防げない。
+成果物は `build/web/` にのみ置くこと。
+
+（なお `*.md` も同様に梱包される。これは以前からの挙動で、実害は数KB程度のため許容している）
+
 ## ファイルマップ（master）
 
 ```
@@ -130,9 +151,19 @@ RESULT: click=通常モード再開 / H=ハードモード再挑戦 / Esc=終了
 3. **`BALL_MAX_VX`（config.py:24）が未使用のまま**
    `ball.py:41` で `self._max_vx` にキャッシュされるが、どこからも参照されていない（デッドコード）。パドル反射時の速度上昇（`+1.0`／回）に上限が無い状態。現状は壁・ブロック反射の減衰（×0.8）と釣り合っている想定だが、上限を効かせたいなら `reflect_paddle()` でクランプする必要がある。
 
-4. **未コミットの残骸**
-   - リポジトリ直下の `favicon.png` / `index.html` / `wordbraker.apk`（未追跡）は `build/web/` と同一内容のコピー。削除してよい。
-   - `main` ブランチ向けの変更（改行コード＋移植ガイド2件の削除）が stash に退避中（`git stash list` 参照）。
+4. ~~**未コミットの残骸（ルート直下のビルド成果物）**~~ → **削除済み（2026-07-17）**
+   `build/web/` と同一内容のコピーだったため削除。apkを汚染していた（上記「ビルド環境」の警告を参照）。
+
+5. **`main` ブランチ向けの変更が stash に退避中**
+   改行コードの差分＋移植ガイド2件の削除。`git stash list` で確認できる。要否の判断が必要。
+
+6. **公開Web版が古い（未デプロイの差分あり）**
+   `gh-pages` の成果物は2025-12-19時点のビルドで、以下が反映されていない:
+   - クリアタイム表示（master には `f620a92` で実装済みだが、**ビルドし直さずにデプロイされたため公開版に載っていない**）
+   - `WordManager.reset()` のクラッシュ修正（2026-07-17）
+   - バージョン表記 ver1.1（2026-07-17）
+
+   ※ FPS修正はWeb版に影響しない（`IS_WEB` で分岐。Web版は元々ブラウザのVSyncで正常だった）。
 
 ## 今後の拡張候補（PROJECT_COMPLETION.md より）
 
