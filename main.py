@@ -4,7 +4,7 @@ Word Breaker - エントリーポイント
 import pygame
 import sys
 import asyncio
-from config import SCREEN_WIDTH, SCREEN_HEIGHT
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE
 from game import Game
 
 # pygame初期化
@@ -19,7 +19,7 @@ except Exception as e:
 # 画面設定
 # Web環境ではフルスクリーン非対応のため、通常ウィンドウモードに変更
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Word Breaker")
+pygame.display.set_caption(WINDOW_TITLE)
 
 async def main():
     """メイン関数（Web対応のためasync）"""

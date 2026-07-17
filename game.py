@@ -17,7 +17,8 @@ from config import (
     BLOCK_WIDTH, BLOCK_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT,
     BALL_RADIUS, INITIAL_LIFES, STAGE_CLEAR_DELAY,
     COLOR_BG, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_UI_WARNING,
-    FONT_SIZE_SCORE, FONT_SIZE_TITLE, FONT_SIZE_NORMAL, JAPANESE_FONTS, FONT_FILE
+    FONT_SIZE_SCORE, FONT_SIZE_TITLE, FONT_SIZE_NORMAL, JAPANESE_FONTS, FONT_FILE,
+    VERSION, GAME_TITLE
 )
 from entities.ball import Ball
 from entities.paddle import Paddle
@@ -519,10 +520,15 @@ class Game:
     
     def draw_title(self):
         """タイトル画面を描画"""
-        title_text = self.font_title.render("Word Breaker", True, COLOR_TEXT)
+        title_text = self.font_title.render(GAME_TITLE, True, COLOR_TEXT)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
         self.screen.blit(title_text, title_rect)
-        
+
+        # バージョン表記（タイトルの真下、控えめに）
+        version_text = self.font_score.render(f"ver{VERSION}", True, COLOR_TEXT_DIM)
+        version_rect = version_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 5))
+        self.screen.blit(version_text, version_rect)
+
         start_text = self.font_normal.render("クリックでスタート", True, COLOR_TEXT_DIM)
         start_rect = start_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
         self.screen.blit(start_text, start_rect)

@@ -3,6 +3,15 @@ Word Breaker - 定数管理ファイル
 すべてのゲーム定数をここで管理します。
 """
 
+# ==================== バージョン ====================
+# バージョン表記の単一の情報源。ここを変えれば以下すべてに反映される:
+#   - ウィンドウタイトル（main.py の set_caption）
+#   - タイトル画面の表示（game.py の draw_title）
+#   - Web版のブラウザタブ（run_web.bat が pygbag --title に渡す）
+VERSION = "1.1"
+GAME_TITLE = "Word Breaker"
+WINDOW_TITLE = f"{GAME_TITLE} ver{VERSION}"
+
 # ==================== 画面設定 ====================
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
