@@ -21,13 +21,10 @@ class WordManager:
         try:
             with open(WORDS_JSON_PATH, 'r', encoding='utf-8') as f:
                 self.words = json.load(f)
-            
+
             # 初期状態を設定
-            for word in self.words:
-                word_id = word['id']
-                self.word_states[word_id] = WordState.UNSEEN
-                self.missed_words[word_id] = 0
-            
+            self.reset()
+
         except FileNotFoundError:
             print(f"エラー: {WORDS_JSON_PATH} が見つかりません")
             self.words = []
@@ -136,6 +133,16 @@ class WordManager:
         """
         return self.words
     
+    def reset(self):
+        """
+        学習状態をリセット（ゲームを最初からやり直す時）
+        全単語を未出題に戻し、ミス回数もクリアする
+        """
+        for word in self.words:
+            word_id = word['id']
+            self.word_states[word_id] = WordState.UNSEEN
+            self.missed_words[word_id] = 0
+
     def reset_stage(self):
         """ステージリセット（必要に応じて）"""
         # 現在は何もしない（状態は保持）
