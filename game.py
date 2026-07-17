@@ -217,6 +217,10 @@ class Game:
         block_y = 150  # 上部から150px
         
         # 3択の選択肢を生成
+        # 【仕様】誤答は words.json の 'choices' を使わず、全単語の訳語からランダムに選ぶ。
+        # 'choices' は固定なので毎回同じ3択になりマンネリ化する。全単語から引くことで、
+        # 少ない語数でも組み合わせが変わり、位置や並びの丸暗記を防げる。
+        # （words.json の 'choices' が未使用なのは意図的。バグではないので「修正」しないこと）
         choices = [word['ja']] + random.sample(
             [w['ja'] for w in self.word_manager.get_all_words() if w['id'] != word['id']],
             2
