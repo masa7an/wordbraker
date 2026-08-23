@@ -1,33 +1,33 @@
 @echo off
-REM Word Breaker - å®Ÿè¡Œç”¨ãƒãƒƒãƒãƒ•ã‚¡ã‚¤ãƒ«
-REM ç›´æ¥Pythonã§ã‚²ãƒ¼ãƒ ã‚’èµ·å‹•ã—ã¾ã™
+cd /d "%~dp0"
+
+REM Use the venv python directly. Do not use activate.bat: it only checks
+REM that the folder exists, so it reports success even when the base
+REM interpreter is gone.
+if not exist "venv\Scripts\python.exe" (
+    echo [ƒGƒ‰[] venv ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñBæ‚Éì¬‚µ‚Ä‚­‚¾‚³‚¢:
+    echo     py -3.12 -m venv venv
+    echo     venv\Scripts\python.exe -m pip install -r requirements.txt
+    pause
+    exit /b 1
+)
 
 echo ========================================
-echo Word Breaker ã‚’èµ·å‹•ã—ã¦ã„ã¾ã™...
+echo Word Breaker ‚ğ‹N“®‚µ‚Ä‚¢‚Ü‚·...
 echo ========================================
 echo.
-
-REM PythonãŒã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã•ã‚Œã¦ã„ã‚‹ã‹ç¢ºèª
-REM pygameãŒã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã•ã‚Œã¦ã„ã‚‹ã‹ç¢ºèª
-
-
-REM ã‚²ãƒ¼ãƒ ã‚’èµ·å‹•
-echo ã‚²ãƒ¼ãƒ ã‚’èµ·å‹•ã—ã¾ã™...
-echo ESCã‚­ãƒ¼ã§çµ‚äº†ã§ãã¾ã™ã€‚
+echo ESCƒL[‚ÅI—¹‚Å‚«‚Ü‚·B
 echo.
-python main.py
+"venv\Scripts\python.exe" main.py
 
-REM ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ãŸå ´åˆ
 if errorlevel 1 (
     echo.
-    echo [ã‚¨ãƒ©ãƒ¼] ã‚²ãƒ¼ãƒ ã®å®Ÿè¡Œä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸã€‚
+    echo [ƒGƒ‰[] ƒQ[ƒ€‚ÌÀs’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B
     echo.
     pause
     exit /b 1
 )
 
-REM æ­£å¸¸çµ‚äº†
 echo.
-echo ã‚²ãƒ¼ãƒ ã‚’çµ‚äº†ã—ã¾ã—ãŸã€‚
+echo Game finished.
 pause
-
